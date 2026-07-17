@@ -93,8 +93,8 @@ func TestHashRejectsOverlongPassword(t *testing.T) {
 
 // Length is counted in runes, so a short-but-multibyte password is still short.
 func TestHashCountsRunesNotBytes(t *testing.T) {
-	// 8 runes, 24 bytes: under the rune minimum, over it in bytes.
-	if _, err := auth.HashPassword("日本語日本語日本"); !errors.Is(err, auth.ErrWeakPassword) {
-		t.Errorf("got %v, want ErrWeakPassword for an 8-rune password", err)
+	// 3 runes, 9 bytes: under the rune minimum, over it in bytes.
+	if _, err := auth.HashPassword("日本語"); !errors.Is(err, auth.ErrWeakPassword) {
+		t.Errorf("got %v, want ErrWeakPassword for a 3-rune password", err)
 	}
 }

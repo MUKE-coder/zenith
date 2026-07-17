@@ -14,7 +14,7 @@ import (
 // MinPasswordLength is the shortest password Zenith will hash. Length is the
 // property that actually resists an offline attack on a stolen hash, so it is
 // the only rule -- composition rules mostly produce "Passw0rd!".
-const MinPasswordLength = 12
+const MinPasswordLength = 6
 
 // ErrWeakPassword is returned when a password is too short to accept.
 var ErrWeakPassword = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
