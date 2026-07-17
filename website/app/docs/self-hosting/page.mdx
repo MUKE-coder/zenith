@@ -1,0 +1,68 @@
+export const metadata = {
+  title: "Self-hosting",
+  description: "Run Zenith with one docker compose up. Two Go services, one volume.",
+};
+
+# Self-hosting
+
+Zenith self-hosts with Docker Compose. Everything stateful lives in one volume.
+
+## Run it
+
+```bash
+cp .env.example .env
+```
+
+Fill in the two required values:
+
+```bash title=".env"
+ZENITH_JWT_SECRET=      # openssl rand -base64 32
+ZENITH_ADMIN_EMAIL=you@example.com
+ZENITH_ADMIN_PASSWORD=  # 12+ characters
+```
+
+```bash
+cd deploy
+docker compose --env-file ../.env up               # core only
+docker compose --env-file ../.env --profile seo up # with SEO audits
+```
+
+The console is at `http://localhost:8080/dashboard/`.
+
+<Callout type="warning">
+There's no default signing secret — Zenith refuses to start without `ZENITH_JWT_SECRET`, because a fallback would be the key signing every token in every deployment that forgot to change it. Keep it stable; changing it signs everyone out.
+</Callout>
+
+## The architecture
+
+Two services, not one — an out-of-memory SEO audit must never take analytics ingestion down with it:
+
+- **`core`** — event ingestion, the stats API, auth, settings, the scheduler, and the console. ~200&nbsp;MB.
+- **`audit-worker`** — headless-Chromium SEO audits, in its own ~1&nbsp;GB image. Optional, behind the `seo` compose profile.
+
+Two stores, each for what it's best at:
+
+- **DuckDB** — columnar, for analytics events and `GROUP BY` aggregations.
+- **SQLite** — transactional, for users, sites, settings, and jobs.
+
+Both sit behind `EventStore` / `AppStore` interfaces, so a hosted tier can later swap in ClickHouse and Postgres without business logic changing.
+
+## Behind HTTPS
+
+Zenith doesn't terminate TLS — that's your reverse proxy's job. Two lines of Caddy:
+
+```
+zenith.example.com {
+    reverse_proxy localhost:8080
+}
+```
+
+It reads `X-Forwarded-Proto` and `X-Forwarded-For`, so the dashboard cookie is marked `Secure` and visitor IPs resolve to the real client.
+
+<Callout type="warning">
+Don't expose Zenith directly to the internet — it trusts `X-Forwarded-For`, which only makes sense behind a proxy. You need one for TLS anyway.
+</Callout>
+
+## Back up the volume
+
+`zenith-data` holds both databases and is the only stateful thing in a deploy. `docker compose down` keeps it; `down -v` destroys it.

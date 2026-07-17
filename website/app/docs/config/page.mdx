@@ -1,0 +1,51 @@
+export const metadata = {
+  title: "Configuration",
+  description: "Every environment variable and zenith.config.js field.",
+};
+
+# Configuration
+
+## The server (environment)
+
+Set these in `.env` (see [Self-hosting](/docs/self-hosting)).
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `ZENITH_JWT_SECRET` | — | **Required.** Signs session tokens, 32+ chars. No default. |
+| `ZENITH_ADMIN_EMAIL` | — | Developer account provisioned on first boot. |
+| `ZENITH_ADMIN_PASSWORD` | — | Its password, 12+ characters. |
+| `ZENITH_PORT` | `8080` | HTTP listen port. |
+| `ZENITH_TOKEN_TTL` | `24h` | How long a console session lasts. |
+| `ZENITH_GEOIP_DB` | — | MaxMind country `.mmdb`. Without it, country is unknown. |
+| `ZENITH_DASHBOARD_DIR` | `./dashboard` | Built SPA; missing means API-only. |
+| `ZENITH_AUDIT_CONCURRENCY` | `1` | SEO audits at once. Each is more live Chromium tabs. |
+| `ZENITH_ENV` | `production` | `development` relaxes the secret requirement. |
+
+<Callout type="note">
+The Resend API key and MAIL FROM are **not** environment variables — they're set in the console under Settings and stored in the database, because they're configuration you change, not deployment plumbing.
+</Callout>
+
+## The client (`zenith.config.js`)
+
+Read server-side only. Holds two secrets — keep it out of git.
+
+| Field | Required | What it does |
+| --- | --- | --- |
+| `backendUrl` | ✓ | URL of your Zenith service. |
+| `siteKey` | ✓ | Public key — ships in the tracker snippet. |
+| `apiKey` | ✓ | Secret key — reads analytics, server-side only. |
+| `siteDomain` | ✓ | The client's domain, e.g. `example.com`. |
+| `dashboardPath` | — | Where the dashboard mounts. Default `/analytics-dashboard`. |
+| `protected` | — | Password-gate the dashboard. Default `true`. |
+| `passwordHash` | if protected | bcrypt hash from `npx zenith hash`. Never plaintext. |
+| `jwtSecret` | if protected | Signs the dashboard session cookie. |
+| `sessionTtl` | — | Dashboard session length in seconds. Default `43200` (12h). |
+
+## CLI
+
+```bash
+npx zenith init   # scaffold zenith.config.js + the dashboard route
+npx zenith hash   # generate a bcrypt hash for the dashboard password
+```
+
+Both read from a prompt, never a flag — a password in `argv` lands in shell history and the process list.

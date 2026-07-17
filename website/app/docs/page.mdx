@@ -1,0 +1,48 @@
+export const metadata = {
+  title: "Docs",
+  description: "Privacy-first, self-hosted analytics you install in your TypeScript and Next.js apps.",
+};
+
+# Zenith documentation
+
+Zenith is privacy-first, multi-site web analytics and SEO auditing that you **self-host once** and share with clients — where each client's dashboard lives natively on their own domain.
+
+You install the [`zenith-analytics`](https://www.npmjs.com/package/zenith-analytics) package in your app (it's built for TypeScript, and first-class for Next.js), point it at your Zenith service, and you're collecting cookieless pageviews in minutes.
+
+<CardGrid>
+  <Card title="Quickstart →" href="/docs/quickstart">
+    Deploy the server, add a site, install the package, and see live pageviews.
+  </Card>
+  <Card title="Next.js setup →" href="/docs/nextjs">
+    The recommended path — App Router and Pages Router, fully typed.
+  </Card>
+  <Card title="The two keys →" href="/docs/keys">
+    Why a site has a public key and a secret key, and which goes where.
+  </Card>
+  <Card title="Domain-native dashboard →" href="/docs/dashboard">
+    Give a client analytics on their own domain, password-protected.
+  </Card>
+</CardGrid>
+
+## What you get
+
+- **Cookieless tracking.** A tiny (~1&nbsp;KB) script and a daily-rotating visitor hash — no cookies, no fingerprinting, no consent banner.
+- **A multi-site console.** Deploy once; every site you manage reports into it. Switch between clients from one dashboard.
+- **Domain-native dashboards.** Your client reads their analytics at `theirsite.com/analytics-dashboard`, same-origin and password-gated.
+- **On-demand SEO audits.** Headless-Chromium audits of titles, meta, links, structured data, and Core Web Vitals.
+- **Automatic monthly reports.** Each client is emailed last month's numbers on the 1st.
+
+## The shape of it
+
+<CardGrid>
+  <Card title="Your app">
+    Installs `zenith-analytics`. A ~1&nbsp;KB script sends pageviews; a proxy route serves the dashboard on your domain.
+  </Card>
+  <Card title="Zenith server">
+    Two Go services you self-host: ingestion + stats + console, and a separate SEO audit worker. DuckDB for events, SQLite for app data.
+  </Card>
+</CardGrid>
+
+<Callout type="tip">
+New here? Start with the [Quickstart](/docs/quickstart) — it takes you from nothing to live analytics on a client's site.
+</Callout>

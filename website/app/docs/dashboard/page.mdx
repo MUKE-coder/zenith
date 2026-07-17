@@ -1,0 +1,52 @@
+export const metadata = {
+  title: "Domain-native dashboard",
+  description: "Give your client analytics on their own domain — same-origin, password-gated.",
+};
+
+# Domain-native dashboard
+
+The signature of Zenith: your client reads their analytics at **`theirsite.com/analytics-dashboard`** — not a foreign subdomain. Because the proxy runs inside their app, the page is same-origin, the cookie is first-party, and there's no CORS.
+
+## Set it up
+
+The [Next.js page](/docs/nextjs#3-mount-the-dashboard) has the exact route for both routers. In short, mount the proxy handler and give it your config:
+
+```ts title="app/analytics-dashboard/[[...zenith]]/route.ts"
+import { createZenithRoute } from "zenith-analytics/next";
+import config from "../../../zenith.config.js";
+
+export const { GET, POST } = createZenithRoute(config);
+export const dynamic = "force-dynamic";
+```
+
+## The password gate
+
+With `protected: true`, the dashboard shows a single centered password card before anything else. Generate the hash — never store a plaintext password:
+
+```bash
+npx zenith hash
+# → paste the result into passwordHash in zenith.config.js
+```
+
+The password is verified against that bcrypt hash **in your app**. Zenith never learns it. A correct password mints a signed, HttpOnly, first-party session cookie that lasts `sessionTtl` (12 hours by default).
+
+<Callout type="tip">
+To publish the dashboard with no gate, set `protected: false`. To change the password, run `npx zenith hash` again and replace `passwordHash`.
+</Callout>
+
+## Why it's safe
+
+Every data request the page makes is **same-origin** against your own server. The proxy re-authenticates it, then forwards it to Zenith with the site's secret [`apiKey`](/docs/keys) attached server-side:
+
+- The browser never sees the api key.
+- The key **names the site**, so a tampered `?site=` parameter changes nothing.
+- There's no site switcher and no way to reach another client's data — the owner sees exactly one site, read-only.
+
+## Hand it to your client
+
+You send them two things:
+
+> Your analytics are at **https://theirsite.com/analytics-dashboard**
+> Password: *(whatever you hashed)*
+
+That's the whole handoff. No account, no third-party subdomain, no Zenith branding — it reads as a native page of their own site. If you also set their **owner email**, they get a [monthly report](/docs/reports) without ever opening the dashboard.

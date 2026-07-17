@@ -1,0 +1,30 @@
+export const metadata = {
+  title: "Monthly reports",
+  description: "Each client is emailed last month's analytics automatically, on the 1st.",
+};
+
+# Monthly reports
+
+Each client gets last month's numbers emailed to them on the **1st at 09:00 UTC**, automatically. There's no cron to configure — the scheduler is built into `core`.
+
+## Set it up
+
+In the console, under **Settings**:
+
+1. A **Resend API key**. Stored server-side and never returned to the browser — not even masked. Once saved, you can change anything else without re-typing it.
+2. **Send from** — an address on a domain you've verified with Resend.
+3. An **owner email** per site. Clear it to stop that site's report.
+
+<Callout type="tip">
+**Send test** delivers the report immediately so you can see what your client sees. It deliberately doesn't record the send, so the real report still goes out on the 1st.
+</Callout>
+
+## What's in it
+
+A clean HTML email with the month's headline numbers, the change versus the previous month, and the top pages, referrers, and countries — with a button back to the full dashboard on the client's own domain.
+
+For most clients, the monthly email *is* the product — they never open the dashboard at all.
+
+## Impossible to duplicate
+
+A send is safe to retry and impossible to duplicate: the report history has a `UNIQUE (site, period)` constraint, so a restart on the 1st can't mail a client twice. A failed month is retried on the next run, and its reason (Resend's own words, like "domain is not verified") surfaces in Settings rather than being silently swallowed.

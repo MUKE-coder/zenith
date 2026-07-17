@@ -1,0 +1,83 @@
+export const metadata = {
+  title: "Quickstart",
+  description: "From nothing to live cookieless analytics on a client's Next.js site.",
+};
+
+# Quickstart
+
+From nothing to live analytics on a client's site. Roughly five minutes.
+
+## 1. Run the server
+
+Zenith needs a signing secret — there's no default, because a default would be the key signing every token in every deployment that forgot to change it.
+
+```bash
+git clone https://github.com/MUKE-coder/zenith
+cd zenith
+cp .env.example .env
+```
+
+Fill in two values in `.env`:
+
+```bash
+ZENITH_JWT_SECRET=      # openssl rand -base64 32
+ZENITH_ADMIN_EMAIL=you@example.com
+ZENITH_ADMIN_PASSWORD=  # 12+ characters
+```
+
+Then bring it up:
+
+```bash
+cd deploy
+docker compose --env-file ../.env up
+```
+
+The console is at `http://localhost:8080/dashboard/`. Sign in with the admin credentials.
+
+<Callout type="note">
+Want SEO audits too? Start with `docker compose --env-file ../.env --profile seo up`. The audit worker is optional and ships in its own image.
+</Callout>
+
+## 2. Add the client's site
+
+In the console, click **Add site** (or use the API). You get back **two keys** — keep both, you'll need them next.
+
+```bash
+curl -X POST http://localhost:8080/api/sites \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"Client Site","domain":"client.com","owner_email":"owner@client.com"}'
+```
+
+## 3. Install the package
+
+In your client's **Next.js** project:
+
+```bash
+npm install zenith-analytics
+npx zenith init      # scaffolds zenith.config.js + the dashboard route
+npx zenith hash      # a bcrypt hash for the dashboard password
+```
+
+Paste the keys and the hash into `zenith.config.js`, then add the tracker to your root layout:
+
+```tsx title="app/layout.tsx"
+import { trackerScriptProps } from "zenith-analytics";
+import config from "../zenith.config.js";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <script {...trackerScriptProps(config)} />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## 4. See the data
+
+Load a page of the site, then open the console. Pageviews appear immediately — the live counter updates every 15 seconds.
+
+That's the whole loop. Next: wire up the [domain-native dashboard](/docs/dashboard) so your client reads their analytics on **their own domain**, or read the full [Next.js setup](/docs/nextjs).

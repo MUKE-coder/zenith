@@ -1,0 +1,70 @@
+export const metadata = {
+  title: "Tracking & events",
+  description: "Automatic pageviews and typed custom events with zenith-analytics/client.",
+};
+
+# Tracking & events
+
+## Pageviews
+
+Once the tracker script is in your layout (see [Next.js](/docs/nextjs)), pageviews are automatic — including **client-side route changes** in a single-page app. There's nothing to call.
+
+The script is cookieless: it sends the URL and referrer, and the server derives a daily-rotating visitor hash from the request. No cookie is set, no identifier is stored, and there's nothing that needs a consent banner.
+
+## Custom events
+
+Import `track` from the browser-safe entry point:
+
+```ts
+"use client";
+import { track } from "zenith-analytics/client";
+
+track("signup", { plan: "pro", seats: 3 });
+```
+
+Properties are optional and can be strings, numbers, or booleans:
+
+```ts
+track("download", { file: "guide.pdf" });
+track("checkout", { total: 4900, currency: "usd" });
+track("newsletter"); // no properties
+```
+
+<Callout type="note">
+`zenith-analytics/client` holds no secrets and **never throws** — a failed analytics call can't break the page it measures. Calls made before the script has loaded are queued and sent once it does.
+</Callout>
+
+## A typed wrapper
+
+For a fixed set of events, wrap `track` so your event names and properties are checked at compile time:
+
+```ts title="lib/analytics.ts"
+import { track } from "zenith-analytics/client";
+
+type Events = {
+  signup: { plan: "free" | "pro" | "team" };
+  download: { file: string };
+  checkout: { total: number };
+};
+
+export function analytics<E extends keyof Events>(event: E, props: Events[E]) {
+  track(event, props);
+}
+```
+
+```tsx
+analytics("signup", { plan: "pro" });      // ✅
+analytics("signup", { plan: "enterprise" }); // ❌ type error
+```
+
+## What's captured
+
+Every event records, cookielessly:
+
+- Pageviews, unique visitors, and sessions (a 30-minute inactivity gap).
+- Top pages, entry and exit pages.
+- Referrers and the UTM breakdown.
+- Country (coarse — never finer), device, browser, OS.
+- Your custom events and their properties.
+
+See it all in the [dashboard](/docs/dashboard).

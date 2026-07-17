@@ -28,3 +28,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# Agent skill installs (local tooling, per-developer)
+.claude/
+.agents/
+skills-lock.json
