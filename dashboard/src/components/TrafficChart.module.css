@@ -1,0 +1,80 @@
+.wrap {
+  width: 100%;
+  height: 280px;
+}
+
+@media (max-width: 560px) {
+  .wrap {
+    height: 220px;
+  }
+}
+
+/* Tooltip: the one place a shadow is allowed, because it is a true overlay. */
+.tooltip {
+  padding: var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+}
+
+.tooltipLabel {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-data);
+}
+
+.tooltipRow + .tooltipRow {
+  margin-top: var(--space-1);
+}
+
+.tooltipKey {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+}
+
+.swatch {
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.tooltipValue {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.select {
+  padding: var(--space-1) var(--space-2);
+  font-family: inherit;
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+
+.select:hover {
+  color: var(--text);
+}

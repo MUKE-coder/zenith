@@ -1,0 +1,188 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-6);
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.navItem {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-body);
+  color: var(--text-muted);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    background-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.navItem:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Accent marks the active item. One of the few places it is spent. */
+.navItemActive {
+  background: var(--surface-2);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.sidebarFoot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbarLeft,
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* One per screen: it names the view and anchors the page for anyone
+   navigating by heading. */
+.pageTitle {
+  margin-bottom: calc(var(--space-8) * -1 + var(--space-2));
+}
+
+.pageSubtitle {
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile: the sidebar becomes a top strip rather than a drawer. A drawer
+   needs a toggle, a focus trap, and an escape key to be correct; a strip
+   needs none of that and this nav is three items long. */
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav {
+    flex-direction: row;
+  }
+
+  .sidebarFoot {
+    margin-top: 0;
+  }
+
+  .topbar {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  /* Each takes its own row and the full width, so the range picker has room
+     to scroll rather than being pushed off the edge. */
+  .topbarLeft,
+  .topbarRight {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .topbarRight {
+    justify-content: space-between;
+  }
+
+  .content {
+    padding: var(--space-4);
+    gap: var(--space-6);
+  }
+}
+
+@media (max-width: 480px) {
+  .brand span {
+    display: none;
+  }
+}

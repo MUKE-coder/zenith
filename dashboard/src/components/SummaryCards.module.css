@@ -1,0 +1,66 @@
+/* 4-up desktop, 2-up tablet, 1-up mobile. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.value {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-label);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-chip);
+  background: var(--surface-2);
+}
+
+.up {
+  color: var(--positive);
+}
+
+.down {
+  color: var(--negative);
+}
+
+.flat,
+.none {
+  color: var(--text-subtle);
+}
+
+.deltaLabel {
+  color: var(--text-subtle);
+  font-weight: 400;
+}

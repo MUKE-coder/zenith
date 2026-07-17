@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/data
+**/*.duckdb
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+.git
+.env
+.env.local
+**/*.log

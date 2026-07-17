@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-test/
+core/core
+core/core.exe
+audit-worker/worker
+audit-worker/worker.exe
+
+# Data — DuckDB and SQLite live here in local dev
+data/
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Secrets — never commit a real env file
+.env
+.env.local
+!.env.example
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,64 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--positive);
+  flex-shrink: 0;
+}
+
+/* The pulse is the one decorative-looking motion in the product, and it is
+   functional: it says the number is live rather than stale. */
+.live {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.idle {
+  background: var(--text-subtle);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* On a phone the words cost more room than they earn, and they crowd the range
+   picker off the screen. The live dot and the number still say "N here now",
+   and the tooltip spells it out. */
+@media (max-width: 560px) {
+  .label {
+    display: none;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live {
+    animation: none;
+  }
+}

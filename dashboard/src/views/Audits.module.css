@@ -1,0 +1,242 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.runRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* The score pill: green >= 90, amber 50-89, red < 50. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-data);
+  font-weight: 500;
+  border-radius: var(--radius-chip);
+  flex-shrink: 0;
+}
+
+.good {
+  color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
+}
+
+.mixed {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.poor {
+  color: var(--negative);
+  background: color-mix(in srgb, var(--negative) 12%, transparent);
+}
+
+.siteScore {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.siteScoreValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Per-page rows, expandable. */
+.page {
+  border-bottom: 1px solid var(--border);
+}
+
+.page:last-child {
+  border-bottom: none;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: var(--text);
+}
+
+.pageURL {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+}
+
+.counts {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  flex-shrink: 0;
+}
+
+.countError {
+  color: var(--negative);
+}
+
+.countWarning {
+  color: var(--warning);
+}
+
+.chevron {
+  color: var(--text-subtle);
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform var(--duration) var(--ease);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}
+
+.issues {
+  padding: 0 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.issue {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.severity {
+  flex-shrink: 0;
+  width: 56px;
+  font-size: var(--text-label);
+  font-weight: 500;
+  padding-top: 1px;
+}
+
+.issueBody {
+  min-width: 0;
+}
+
+.issueDetail {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.vital {
+  font-size: var(--text-label);
+  color: var(--text-muted);
+}
+
+.vitalValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.failed {
+  padding: var(--space-4);
+  color: var(--negative);
+  background: color-mix(in srgb, var(--negative) 8%, transparent);
+  border-radius: var(--radius-button);
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  border-radius: var(--radius-button);
+}
+
+.historyRow:hover {
+  color: var(--text);
+}
+
+.historyActive {
+  color: var(--accent);
+}

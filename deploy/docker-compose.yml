@@ -1,0 +1,72 @@
+# Zenith — self-host with `docker compose up`.
+#
+#   docker compose up                  core only
+#   docker compose --profile seo up    core + the SEO audit worker
+#
+# The worker is behind a profile because it is optional and expensive: it
+# carries Chromium, which makes its image ~1GB against core's ~200MB. A
+# developer who does not want SEO audits simply never starts it, and everything
+# else keeps working.
+
+services:
+  core:
+    build:
+      context: ..
+      dockerfile: deploy/core.Dockerfile
+    image: zenith/core:dev
+    restart: unless-stopped
+    ports:
+      - '${ZENITH_PORT:-8080}:8080'
+    environment:
+      ZENITH_PORT: 8080
+      ZENITH_DATA_DIR: /data
+      # No default, and compose refuses to start without it: a fallback secret
+      # would be the key signing every token in every deployment that forgot to
+      # replace it.
+      ZENITH_JWT_SECRET: ${ZENITH_JWT_SECRET:?set ZENITH_JWT_SECRET - generate one with `openssl rand -base64 32`}
+      ZENITH_TOKEN_TTL: ${ZENITH_TOKEN_TTL:-24h}
+      # Optional: provisions the first developer account on boot. An existing
+      # account is never overwritten, so leaving these set is safe.
+      ZENITH_ADMIN_EMAIL: ${ZENITH_ADMIN_EMAIL:-}
+      ZENITH_ADMIN_PASSWORD: ${ZENITH_ADMIN_PASSWORD:-}
+    volumes:
+      # DuckDB (events) and SQLite (app data) both live here. This is the only
+      # stateful thing in a Zenith deploy — back up this volume.
+      - zenith-data:/data
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/core', '-healthcheck']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  audit-worker:
+    profiles: ['seo']
+    build:
+      context: ..
+      dockerfile: deploy/audit-worker.Dockerfile
+    image: zenith/audit-worker:dev
+    restart: unless-stopped
+    environment:
+      ZENITH_DATA_DIR: /data
+      ZENITH_CHROME_PATH: /usr/bin/chromium
+      # One audit at a time by default. Each concurrent audit is another set
+      # of live Chromium tabs, and this is the knob that bounds memory.
+      ZENITH_AUDIT_CONCURRENCY: ${ZENITH_AUDIT_CONCURRENCY:-1}
+    volumes:
+      # The same volume as core: the audit_jobs table is the queue. Core
+      # enqueues, the worker claims. There is no broker to run at this scale.
+      - zenith-data:/data
+    # Chromium needs more than Docker's default 64MB of /dev/shm and will
+    # crash rendering real pages without it.
+    shm_size: '1gb'
+    depends_on:
+      # Wait for core to be *healthy*, not merely started: core runs the
+      # migrations and initializes the shared volume, and the worker has
+      # nothing to do until the tables exist. This also removes any race over
+      # who owns the volume first.
+      core:
+        condition: service_healthy
+
+volumes:
+  zenith-data:

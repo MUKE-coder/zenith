@@ -1,0 +1,76 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.headRow th {
+  padding-bottom: var(--space-2);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.row td {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.row:last-child td {
+  border-bottom: none;
+}
+
+/* The label cell carries a share bar behind the text: the proportion reads
+   before the number does. */
+.labelCell {
+  position: relative;
+  min-width: 0;
+  padding-right: var(--space-4);
+}
+
+.bar {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--space-2) * -1);
+  height: 22px;
+  transform: translateY(-50%);
+  background: var(--accent);
+  opacity: 0.08;
+  border-radius: var(--radius-chip);
+  transition: width var(--duration) var(--ease);
+}
+
+.label {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Shrink to content, but never let two numeric columns touch: at width 1%
+   the headers ("Views" and "Visitors") otherwise collide into one word. */
+.numeric {
+  width: 1%;
+  padding-left: var(--space-6);
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-data);
+  white-space: nowrap;
+}
+
+.secondary {
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}

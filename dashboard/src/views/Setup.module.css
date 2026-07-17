@@ -1,0 +1,118 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 720px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stepLabel {
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* A code block with a copy button. */
+.code {
+  position: relative;
+  padding: var(--space-4);
+  padding-right: var(--space-12);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
+
+.copy {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+}
+
+.copy:hover {
+  color: var(--text);
+}
+
+.keyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.keyRow:last-child {
+  border-bottom: none;
+}
+
+.keyMeta {
+  min-width: 120px;
+}
+
+.keyName {
+  font-weight: 500;
+}
+
+.keyTag {
+  font-size: var(--text-label);
+}
+
+.public {
+  color: var(--positive);
+}
+
+.secret {
+  color: var(--warning);
+}
+
+.keyValue {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.reveal {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.danger {
+  align-self: flex-start;
+  color: var(--negative);
+  border-color: color-mix(in srgb, var(--negative) 40%, var(--border));
+}
+
+.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--negative) 8%, transparent);
+}

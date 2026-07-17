@@ -1,0 +1,105 @@
+/* Surface, 24px padding, hairline border, 8px radius. Borders over shadows. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-h2);
+  font-weight: 600;
+}
+
+.action {
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Empty state: says what to do next, never a shrug. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 120px;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.emptyTitle {
+  color: var(--text-muted);
+}
+
+.emptyHint {
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+}
+
+/* Errors explain what happened and how to fix it. */
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 120px;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.errorMessage {
+  color: var(--negative);
+}
+
+/* Quiet skeletons, not spinners. */
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-chip);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Non-essential motion is a preference. A still skeleton still reads as
+   loading; a pulsing one can be unbearable. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.skeletonRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeletonRow {
+  height: 16px;
+}

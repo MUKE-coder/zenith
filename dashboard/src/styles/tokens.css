@@ -1,0 +1,91 @@
+/*
+ * Zenith design tokens — the single source of truth for the visual system.
+ * Values come from style-guide.md. Do not introduce colors, fonts, or spacing
+ * steps that are not defined here.
+ */
+
+:root {
+  /* Neutrals — light. Dark is the developer default, light the owner default. */
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --text: #0a0a0a;
+  --text-muted: #71717a;
+  --text-subtle: #a1a1aa;
+
+  /* Accent & semantic — identical in both themes. */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --positive: #16a34a;
+  --negative: #dc2626;
+  --warning: #d97706;
+
+  /* Type */
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --text-display: 2.25rem;
+  --text-h1: 1.5rem;
+  --text-h2: 1.125rem;
+  --text-body: 0.9375rem;
+  --text-label: 0.8125rem;
+  --text-data: 0.875rem;
+
+  /* Spacing — 4px base grid. These are the only steps. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-card: 8px;
+  --radius-button: 6px;
+  --radius-chip: 4px;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --content-max: 1280px;
+
+  /* Motion — short and functional only. */
+  --duration: 160ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --surface: #111113;
+  --surface-2: #18181b;
+  --border: #27272a;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-subtle: #71717a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0a0a0a;
+    --surface: #111113;
+    --surface-2: #18181b;
+    --border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --text-subtle: #71717a;
+  }
+}
+
+/* Non-essential motion is a preference, not a default. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
