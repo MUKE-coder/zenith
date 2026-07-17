@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Privacy-first analytics for your site — cookieless tracking and a dashboard that lives on your own domain.",
   "license": "MIT",
+  "author": "MUKE JOHNBAPTIST",
+  "homepage": "https://github.com/MUKE-coder/zenith#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MUKE-coder/zenith.git",
+    "directory": "npm"
+  },
+  "bugs": {
+    "url": "https://github.com/MUKE-coder/zenith/issues"
+  },
   "type": "module",
   "files": [
     "dist"
@@ -28,14 +38,15 @@
     }
   },
   "bin": {
-    "zenith": "./dist/cli.js"
+    "zenith": "dist/cli.js"
   },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "test": "node --test dist-test/*.test.js",
-    "pretest": "tsc -p tsconfig.test.json"
+    "test": "node --test dist-test/test/*.test.js",
+    "pretest": "tsc -p tsconfig.test.json",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "analytics",
