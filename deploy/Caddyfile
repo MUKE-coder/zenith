@@ -1,0 +1,7 @@
+// Zenith TLS front door. Caddy terminates HTTPS and forwards to core over the
+// internal Docker network, fetching and renewing the Let's Encrypt certificate
+// on its own. ZENITH_DOMAIN is supplied by docker-compose.caddy.yml from .env.
+
+{$ZENITH_DOMAIN} {
+	reverse_proxy core:8080
+}

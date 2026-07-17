@@ -1,0 +1,42 @@
+# Zenith — automatic HTTPS via Caddy + Let's Encrypt.
+#
+# Layer this on top of the base compose. Set ZENITH_DOMAIN in .env and point
+# that domain's A record at this server first, then:
+#
+#   cd deploy
+#   docker compose -f docker-compose.yml -f docker-compose.caddy.yml --env-file ../.env up -d
+#   # add --profile seo before `up` to include the SEO audit worker
+#
+# Caddy fetches the certificate on first boot and renews it on its own — there
+# is nothing to run and nothing to renew by hand.
+
+services:
+  # Behind a proxy, core must not be reachable directly from the internet: it
+  # trusts X-Forwarded-For, so a direct caller could forge the visitor hash and
+  # slip past the per-IP rate limit. Publishing it only on the loopback
+  # interface leaves Caddy — on the internal Docker network — as the sole way in.
+  core:
+    ports:
+      - '127.0.0.1:${ZENITH_PORT:-8080}:8080'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      ZENITH_DOMAIN: ${ZENITH_DOMAIN:?set ZENITH_DOMAIN - the hostname Caddy serves, e.g. zenith.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The issued certificate and ACME account live here. Persist it, or Caddy
+      # re-requests a certificate on every restart and will hit rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      core:
+        condition: service_healthy
+
+volumes:
+  caddy-data:
+  caddy-config:
