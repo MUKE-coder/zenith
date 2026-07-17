@@ -2,18 +2,14 @@
 #
 # In the Dokploy Compose service, set:
 #   • Compose Path:  ./deploy/docker-compose.dokploy.yml
-#   • Environment:   ZENITH_JWT_SECRET, ZENITH_ADMIN_EMAIL,
-#                    ZENITH_ADMIN_PASSWORD, ZENITH_DOMAIN
+#   • Environment:   ZENITH_JWT_SECRET, ZENITH_ADMIN_EMAIL, ZENITH_ADMIN_PASSWORD
 #
-# Dokploy's built-in Traefik terminates TLS and issues the Let's Encrypt
-# certificate, so there is no Caddy here and core publishes no host port:
-# Traefik reaches it over dokploy-network and the labels below tell Traefik
-# which host to route and which container port to hit. Point ZENITH_DOMAIN's
-# A record at the Dokploy server first.
-#
-# Because these labels wire up the domain, do NOT also add an entry in
-# Dokploy's Domains tab for this service — that would create a second router
-# for the same host.
+# Routing and TLS are handled by Dokploy's Domains tab, not by this file. Add a
+# domain there pointing at service "core", port 8080, HTTPS on, certificate
+# "letsencrypt". Core joins the external dokploy-network and exposes 8080 on it
+# so Dokploy's Traefik can reach the container by service name — nothing is
+# published on the server's public IP. Point the domain's A record at the
+# Dokploy server first.
 
 services:
   core:
@@ -44,13 +40,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.zenith.rule=Host(`${ZENITH_DOMAIN:?set ZENITH_DOMAIN - the hostname to serve, e.g. zenith.example.com}`)
-      - traefik.http.routers.zenith.entrypoints=websecure
-      - traefik.http.routers.zenith.tls.certresolver=letsencrypt
-      - traefik.http.services.zenith.loadbalancer.server.port=8080
 
   audit-worker:
     profiles: ['seo']
