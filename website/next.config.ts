@@ -3,14 +3,16 @@ import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
   pageExtensions: ["ts", "tsx", "md", "mdx"],
+  // Emit a minimal, self-contained server at .next/standalone for Docker —
+  // deployable without node_modules. See node_modules/next/dist/docs output.md.
+  output: "standalone",
 };
 
 const withMDX = createMDX({
   options: {
     remarkPlugins: [],
     // Turbopack requires plugins by string name — function instances can't be
-    // passed to the Rust worker (see node_modules/next/dist/docs mdx guide).
-    // Our options here are plain serializable objects, so this is allowed.
+    // passed to the Rust worker. Our options are plain serializable objects.
     rehypePlugins: [
       "rehype-slug",
       [

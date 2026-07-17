@@ -1,0 +1,27 @@
+# Build artifacts and deps — the image builds these itself.
+node_modules
+.next
+out
+dist
+
+# Local env and secrets.
+.env
+.env.local
+.env*.local
+
+# VCS and tooling.
+.git
+.gitignore
+.claude
+.agents
+
+# Editor / OS.
+.vscode
+.idea
+.DS_Store
+*.log
+npm-debug.log*
+
+# Agent docs — not needed at build time.
+AGENTS.md
+CLAUDE.md
