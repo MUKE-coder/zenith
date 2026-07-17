@@ -1,0 +1,81 @@
+# Zenith on Dokploy.
+#
+# In the Dokploy Compose service, set:
+#   • Compose Path:  ./deploy/docker-compose.dokploy.yml
+#   • Environment:   ZENITH_JWT_SECRET, ZENITH_ADMIN_EMAIL,
+#                    ZENITH_ADMIN_PASSWORD, ZENITH_DOMAIN
+#
+# Dokploy's built-in Traefik terminates TLS and issues the Let's Encrypt
+# certificate, so there is no Caddy here and core publishes no host port:
+# Traefik reaches it over dokploy-network and the labels below tell Traefik
+# which host to route and which container port to hit. Point ZENITH_DOMAIN's
+# A record at the Dokploy server first.
+#
+# Because these labels wire up the domain, do NOT also add an entry in
+# Dokploy's Domains tab for this service — that would create a second router
+# for the same host.
+
+services:
+  core:
+    build:
+      context: ..
+      dockerfile: deploy/core.Dockerfile
+    image: zenith/core:dev
+    restart: unless-stopped
+    environment:
+      ZENITH_PORT: 8080
+      ZENITH_DATA_DIR: /data
+      ZENITH_JWT_SECRET: ${ZENITH_JWT_SECRET:?set ZENITH_JWT_SECRET - generate one with `openssl rand -base64 32`}
+      ZENITH_TOKEN_TTL: ${ZENITH_TOKEN_TTL:-24h}
+      ZENITH_ADMIN_EMAIL: ${ZENITH_ADMIN_EMAIL:-}
+      ZENITH_ADMIN_PASSWORD: ${ZENITH_ADMIN_PASSWORD:-}
+    volumes:
+      - zenith-data:/data
+    # No host port. Traefik reaches core by service name over dokploy-network;
+    # exposing 8080 to the network is all it needs, and nothing is published on
+    # the server's public interface.
+    expose:
+      - '8080'
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/core', '-healthcheck']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.zenith.rule=Host(`${ZENITH_DOMAIN:?set ZENITH_DOMAIN - the hostname to serve, e.g. zenith.example.com}`)
+      - traefik.http.routers.zenith.entrypoints=websecure
+      - traefik.http.routers.zenith.tls.certresolver=letsencrypt
+      - traefik.http.services.zenith.loadbalancer.server.port=8080
+
+  audit-worker:
+    profiles: ['seo']
+    build:
+      context: ..
+      dockerfile: deploy/audit-worker.Dockerfile
+    image: zenith/audit-worker:dev
+    restart: unless-stopped
+    environment:
+      ZENITH_DATA_DIR: /data
+      ZENITH_CHROME_PATH: /usr/bin/chromium
+      ZENITH_AUDIT_CONCURRENCY: ${ZENITH_AUDIT_CONCURRENCY:-1}
+    volumes:
+      # Shares the volume with core — the audit_jobs table is the queue. The
+      # worker never talks to core over HTTP, so it needs no network routing.
+      - zenith-data:/data
+    shm_size: '1gb'
+    depends_on:
+      core:
+        condition: service_healthy
+
+networks:
+  # Created by Dokploy; every deployment shares it with the Traefik proxy.
+  dokploy-network:
+    external: true
+
+volumes:
+  zenith-data:
