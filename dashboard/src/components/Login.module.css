@@ -1,42 +1,195 @@
+/* Split sign-in: brand panel on the left, the card on the right. Below 900px
+   the brand panel drops and the card centers on its own. */
 .wrap {
   display: grid;
-  place-items: center;
+  grid-template-columns: 1.05fr 1fr;
   min-height: 100%;
-  padding: var(--space-6);
 }
 
-/* A single centered card. Nothing else. It has to feel calm and trustworthy
-   on any host site. */
-.card {
-  width: 100%;
-  max-width: 380px;
-  padding: var(--space-8);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+@media (max-width: 900px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+  .brandPanel {
+    display: none;
+  }
 }
 
-.brand {
+/* ── Brand panel ─────────────────────────────────────────────────────────── */
+
+.brandPanel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: var(--space-16) var(--space-12);
+  color: #fff;
+  background:
+    radial-gradient(120% 120% at 15% 15%, rgba(255, 255, 255, 0.16), transparent 55%),
+    linear-gradient(155deg, #1e3a8a 0%, #2563eb 48%, #1d4ed8 100%);
+}
+
+/* A faint grid, the same signature the marketing site uses. */
+.brandPanel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(120% 100% at 30% 20%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(120% 100% at 30% 20%, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+
+.brandInner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 460px;
+}
+
+.panelBrand {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-6);
+  font-size: var(--text-h2);
   font-weight: 600;
 }
 
+.panelBrand .mark {
+  background: #fff;
+}
+
+.pitchTitle {
+  font-size: var(--text-display);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-4);
+}
+
+.pitchText {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  max-width: 42ch;
+}
+
+/* Glassy stat preview — a small echo of the console it guards. */
+.preview {
+  padding: var(--space-6);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.previewHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.previewLabel {
+  font-size: var(--text-label);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.livePill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+}
+
+.previewValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.previewValue {
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.previewDelta {
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: #86efac;
+}
+
+.spark {
+  display: block;
+  width: 100%;
+  height: 56px;
+  margin-top: var(--space-4);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Form panel ──────────────────────────────────────────────────────────── */
+
+.formPanel {
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+}
+
+/* The wordmark only shows on the card when the brand panel is hidden. */
+.cardBrand {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .cardBrand {
+    display: flex;
+  }
+}
+
 .mark {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   background: var(--accent);
+  flex: none;
 }
 
 .title {
+  font-size: var(--text-h1);
   margin-bottom: var(--space-1);
 }
 
 .subtitle {
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
   color: var(--text-muted);
   font-size: var(--text-body);
 }
@@ -45,10 +198,64 @@
   margin-top: var(--space-4);
 }
 
+/* Icon-padded inputs. The compound selector outranks the global `.input`, so
+   the padding wins regardless of stylesheet order. */
+.inputWrap {
+  position: relative;
+}
+
+.inputWrap .withIcon {
+  padding-left: calc(var(--space-8) + var(--space-2));
+}
+
+.inputWrap .withToggle {
+  padding-right: calc(var(--space-8) + var(--space-2));
+}
+
+.inputIcon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.toggle {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .submit {
   width: 100%;
   margin-top: var(--space-6);
   padding: var(--space-3);
+  font-weight: 600;
 }
 
 .error {
