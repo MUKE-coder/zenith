@@ -78,14 +78,22 @@ returns the props, and `trackerScriptTag(config)` returns plain HTML.
 
 ## Custom events
 
+Pageviews arrive on their own. Anything else you name yourself:
+
 ```ts
 import { track } from 'zenith-analytics/client'
 
-track('signup', { plan: 'pro' })
+track('signup')
+track('signup', { plan: 'pro', source: 'pricing' })
 ```
 
+Properties are optional and arrive as strings. They're for slicing an event — plan, tier,
+variant — not for storing text: keep them short and low-cardinality, or the breakdown becomes
+one row per event.
+
 `zenith-analytics/client` is browser-safe — it holds no secrets and never throws, so a failed
-analytics call can't break the page it measures.
+analytics call can't break the page it measures. Calls made before the snippet has loaded are
+queued and sent once it does, so you don't have to care about ordering.
 
 ## The domain-native dashboard (Next.js)
 
@@ -99,12 +107,95 @@ export const { GET, POST } = createZenithRoute(config)
 export const dynamic = 'force-dynamic'
 ```
 
-**Pages Router** — `pages/api/zenith/[[...zenith]].ts`, plus a rewrite in `next.config.js`.
+`force-dynamic` matters: without it Next may statically render the route at build time and
+serve every visitor the same cached page — which for a password gate means serving one
+client's dashboard to whoever asks.
+
+**Pages Router** — `pages/api/zenith/[[...zenith]].ts`:
+
+```ts
+import { createZenithApiRoute } from 'zenith-analytics/next'
+import config from '../../../zenith.config.js'
+
+export default createZenithApiRoute(config)
+export const config = { api: { bodyParser: false } }
+```
+
+plus a rewrite in `next.config.js`, so the URL your client sees is their own:
+
+```js
+async rewrites() {
+  return [
+    { source: '/analytics-dashboard', destination: '/api/zenith' },
+    { source: '/analytics-dashboard/:path*', destination: '/api/zenith/:path*' },
+  ]
+}
+```
+
+`bodyParser: false` matters: the handler reads the password form itself, and Next's parser
+would consume the stream first, leaving nothing to read.
+
 `npx zenith init` scaffolds whichever router it detects, with the exact wiring.
 
 Your client visits `yoursite.com/analytics-dashboard`, enters the password, and sees their
 analytics — on their own domain. The proxy reads the data server-side with the secret `apiKey`,
 which never reaches the browser.
+
+### Setting the password
+
+```sh
+npx zenith hash     # prompts, prints a bcrypt hash
+```
+
+Paste it into `passwordHash`. Never store a plaintext password. The password is verified
+against that hash **in your app** — the Zenith service never learns it. A correct password
+mints a signed, HttpOnly, first-party cookie lasting `sessionTtl` (12 hours by default).
+
+To change it, run `npx zenith hash` again and replace the value. To publish the dashboard with
+no gate at all, set `protected: false`.
+
+### Two dashboards, two passwords
+
+Easy to confuse, so worth stating plainly:
+
+| | Your console | Your client's dashboard |
+|---|---|---|
+| **Where** | `your-zenith-server/dashboard/` | `theirsite.com/analytics-dashboard` |
+| **Signs in with** | Email + password | A password only |
+| **Set by** | `ZENITH_ADMIN_EMAIL` / `ZENITH_ADMIN_PASSWORD` on the server | `passwordHash` in `zenith.config.js` |
+| **Sees** | Every site you manage | Exactly one site, read-only |
+
+This package only configures the second one.
+
+## zenith.config.js
+
+Read server-side only. Holds two secrets — keep it out of git (`npx zenith init` adds it to
+`.gitignore`).
+
+| Field | Required | Default | What it is |
+|---|---|---|---|
+| `backendUrl` | ✓ | — | Your Zenith service, e.g. `https://zenith.example.com` |
+| `siteKey` | ✓ | — | Public key — ships in the page |
+| `apiKey` | ✓ | — | Secret key — reads analytics, server-side only |
+| `siteDomain` | ✓ | — | The site being measured, e.g. `example.com` |
+| `dashboardPath` | — | `/analytics-dashboard` | Where the dashboard mounts |
+| `protected` | — | `true` | Password-gate the dashboard |
+| `passwordHash` | if protected | — | bcrypt hash from `npx zenith hash` |
+| `jwtSecret` | if protected | — | Signs the dashboard cookie, 32+ chars |
+| `sessionTtl` | — | `43200` (12h) | Dashboard session length, in seconds |
+
+Every value is validated at startup, and each failure says how to fix it — a missing hash, a
+plaintext password where a hash belongs, or a `siteKey` and `apiKey` that are the same value
+(easy to transpose, and catastrophic: it would put the secret key in every visitor's page).
+
+## CLI
+
+```sh
+npx zenith init     # scaffold zenith.config.js + the dashboard route for your router
+npx zenith hash     # generate a bcrypt hash for the dashboard password
+```
+
+`init` detects App Router vs Pages Router and writes the right wiring for it.
 
 ## The two keys
 
@@ -132,7 +223,15 @@ variables, not with `zenith.config.js` — `ZENITH_JWT_SECRET` (the only require
 `ZENITH_TOKEN_TTL`, and the rest. Every variable and its default is tabulated in the
 **[Zenith README](https://github.com/MUKE-coder/zenith#core)**.
 
-Two that surprise people:
+Two features live entirely on that side, with nothing to install here:
+
+- **Monthly reports.** Give a site an owner email in the console and that owner is emailed
+  last month's numbers on the 1st. Set the Resend API key under Settings first.
+- **SEO audits.** On demand, the optional audit worker opens every page in a real browser and
+  reports titles, meta descriptions, heading order, broken links, structured data, and Core
+  Web Vitals. The result downloads as Markdown or JSON.
+
+Two things that surprise people:
 
 - **Country data is opt-in.** Countries need a lookup database that can't be redistributed
   with Zenith, so you download a free country `.mmdb` ([DB-IP Lite](https://db-ip.com/db/download/ip-to-country-lite)
