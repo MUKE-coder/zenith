@@ -13,6 +13,10 @@ function Svg({ children, className }: { children: ReactNode; className?: string 
   return (
     <svg
       className={className}
+      // A default size, so an icon dropped somewhere with no styling is a
+      // glyph rather than a 300x150 block. Any CSS rule still overrides it.
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

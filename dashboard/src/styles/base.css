@@ -87,6 +87,9 @@ h2 {
   font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.2;
+  /* A label is one line. Without this a leading icon can squeeze the text
+     into a second row and the button reads as two words stacked. */
+  white-space: nowrap;
   border-radius: var(--radius-button);
   border: 1px solid transparent;
   cursor: pointer;
@@ -94,6 +97,17 @@ h2 {
     background-color var(--duration) var(--ease),
     border-color var(--duration) var(--ease),
     color var(--duration) var(--ease);
+}
+
+/* An icon in a button is sized here, not by the caller: an svg carrying only
+   a viewBox has no intrinsic size and would otherwise claim the default
+   300x150 and crowd out the label. */
+.button-primary svg,
+.button-secondary svg,
+.button-ghost svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
 }
 
 .button-primary {
