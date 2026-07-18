@@ -1,5 +1,7 @@
 # Zenith
 
+![Zenith — privacy-first analytics. Cookieless. Self-hosted. Yours.](zenith_thumbnail.png)
+
 The vantage point over all your sites. Privacy-first, multi-site web analytics and SEO auditing
 that you self-host once and share with clients — where each client's dashboard lives natively on
 their own domain.
