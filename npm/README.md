@@ -121,7 +121,27 @@ out of client code and out of git.
 - `zenith-analytics` — server-side: config, the proxy handler, tracker-script helpers. Reads
   `zenith.config.js`, so **do not** import it into browser code.
 - `zenith-analytics/client` — browser-safe: `track()`. No config, no secrets.
-- `zenith-analytics/next` — Next.js App Router and Pages Router adapters.
+- `zenith-analytics/next` — `<Analytics />` plus the App Router and Pages Router adapters.
+- `zenith-analytics/react` — `<Analytics />` on its own, for a React app that isn't Next.js.
+
+## The Zenith service
+
+This package talks to a Zenith service you run. That side is configured with environment
+variables, not with `zenith.config.js` — `ZENITH_JWT_SECRET` (the only required one),
+`ZENITH_ADMIN_EMAIL` / `ZENITH_ADMIN_PASSWORD`, `ZENITH_PORT`, `ZENITH_DATA_DIR`,
+`ZENITH_TOKEN_TTL`, and the rest. Every variable and its default is tabulated in the
+**[Zenith README](https://github.com/MUKE-coder/zenith#core)**.
+
+Two that surprise people:
+
+- **Country data is opt-in.** Countries need a lookup database that can't be redistributed
+  with Zenith, so you download a free country `.mmdb` ([DB-IP Lite](https://db-ip.com/db/download/ip-to-country-lite)
+  needs no account) and set `ZENITH_GEOIP_DB` to its path. Without it everything works and
+  country reads `Unknown`. Country is resolved when an event is recorded, so adding the
+  database later doesn't backfill —
+  [full steps](https://github.com/MUKE-coder/zenith#country-data-geoip).
+- **The email API key isn't an environment variable.** Resend's key and MAIL FROM are set in
+  the console under Settings and stored in the database.
 
 ## License
 

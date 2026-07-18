@@ -56,6 +56,20 @@ export function Setup({ site, onDeleted }: Props) {
     `  siteDomain: "${site.domain}",\n` +
     `}`
 
+  const layout =
+    `import { Analytics } from "zenith-analytics/next"\n` +
+    `import config from "../zenith.config.js"\n\n` +
+    `export default function RootLayout({ children }) {\n` +
+    `  return (\n` +
+    `    <html lang="en">\n` +
+    `      <body>\n` +
+    `        {children}\n` +
+    `        <Analytics config={config} />\n` +
+    `      </body>\n` +
+    `    </html>\n` +
+    `  )\n` +
+    `}`
+
   return (
     <div className={styles.stack}>
       <Panel title="Install with the npm package">
@@ -69,6 +83,12 @@ export function Setup({ site, onDeleted }: Props) {
             Then fill in <code>zenith.config.js</code>:
           </p>
           <CodeBlock code={config} />
+          <p className={styles.stepLabel}>
+            Finally, drop the tracker into your root layout. Leave it there — a layout
+            renders on the server, which keeps the snippet inline where the browser runs
+            it, and keeps this config's secrets out of the browser.
+          </p>
+          <CodeBlock code={layout} />
         </div>
       </Panel>
 

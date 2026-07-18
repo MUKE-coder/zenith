@@ -182,8 +182,8 @@ export function Dashboard({ siteId, ready, range, onUnauthorized }: Props) {
             onRetry={geo.reload}
             labelHeader="Country"
             formatLabel={countryName}
-            emptyTitle="No country data."
-            emptyHint="Set ZENITH_GEOIP_DB to resolve countries."
+            emptyTitle="No country data"
+            emptyHint="Countries need a lookup database, which can't ship with Zenith. Download a free country .mmdb (DB-IP Lite needs no account), put it beside your data, and set ZENITH_GEOIP_DB to its path. Everything else works without it."
           />
         </Panel>
 

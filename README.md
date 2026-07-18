@@ -267,11 +267,16 @@ Listens on `:8080` and writes to `./data` by default.
 | `ZENITH_APP_DB`          | `$DATA_DIR/zenith.sqlite` | SQLite app store                              |
 | `ZENITH_TOKEN_TTL`       | `24h`                     | How long a session lasts                      |
 | `ZENITH_ADMIN_EMAIL`     | —                         | Developer account to provision on boot        |
-| `ZENITH_ADMIN_PASSWORD`  | —                         | Its password, 12+ characters                  |
-| `ZENITH_GEOIP_DB`        | —                         | MaxMind country `.mmdb`; without it, country is unknown |
-| `ZENITH_DASHBOARD_DIR`   | `./dashboard`             | Built SPA; missing means API-only              |
+| `ZENITH_ADMIN_PASSWORD`  | —                         | Its password, 6+ characters                   |
+| `ZENITH_GEOIP_DB`        | —                         | Country `.mmdb`; without it, country is unknown. See [Country data](#country-data-geoip) |
+| `ZENITH_DASHBOARD_DIR`   | `./dashboard`             | Built SPA; the Docker image sets this. Missing means API-only |
 | `ZENITH_RESEND_ENDPOINT` | Resend                    | Point email at a mock to verify a deploy       |
 | `ZENITH_ENV`             | `production`              | `development` relaxes the secret requirement  |
+
+The audit worker reads `ZENITH_DATA_DIR` and `ZENITH_APP_DB` (both must point at the **same
+volume as core** — the audit queue is a table in the shared SQLite database), plus
+`ZENITH_AUDIT_CONCURRENCY` (default `1`, the knob that bounds Chromium memory) and
+`ZENITH_CHROME_PATH` (default `/usr/bin/chromium`).
 
 The Resend API key and MAIL FROM are **not** environment variables — they're set in the console
 and stored in the database, because they're configuration a developer changes, not deployment
@@ -280,6 +285,45 @@ plumbing.
 In development, `ZENITH_ENV=development` lets core generate a throwaway signing secret so
 `go run ./cmd/core` works with no setup. It says so loudly on boot, and every restart signs
 everyone out. Never use it in a deployment.
+
+### Country data (GeoIP)
+
+Country comes from a local IP lookup database. It can't ship with Zenith — the licences don't
+allow redistribution — so you supply it. Without one, Zenith runs fine and country reads
+`Unknown`.
+
+Zenith reads any **MaxMind-format country `.mmdb`**. Two free sources:
+
+- **[DB-IP Lite Country](https://db-ip.com/db/download/ip-to-country-lite)** — no account, direct
+  download, refreshed monthly. The easiest path.
+- **[MaxMind GeoLite2 Country](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data)** —
+  free, but needs a signup and a licence key.
+
+Both arrive gzipped:
+
+```sh
+curl -L -o country.mmdb.gz https://download.db-ip.com/free/dbip-country-lite-2026-07.mmdb.gz
+gunzip country.mmdb.gz
+```
+
+The DB-IP URL carries the year and month — check the page for the current one. Put the file on
+the data volume, where it survives restarts, and point Zenith at it:
+
+```sh
+docker cp country.mmdb <core-container>:/data/country.mmdb
+```
+
+```ini
+ZENITH_GEOIP_DB=/data/country.mmdb
+```
+
+On a platform that rebuilds the image (Dokploy, for instance), mount the file rather than
+`docker cp`-ing it, or it disappears on the next deploy.
+
+> **Country is resolved when the event is recorded, not when you read it.** The raw IP is used
+> to derive a country code and then dropped — no IP is ever stored. So adding the database
+> later cannot backfill: events already collected stay `Unknown`. Only traffic after the
+> restart gets a country.
 
 Migrations run automatically on boot and are idempotent — re-running is a no-op.
 
