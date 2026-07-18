@@ -75,14 +75,22 @@ npx zenith init      # writes zenith.config.js, scaffolds the dashboard route
 npx zenith hash      # prints a bcrypt hash for the dashboard password
 ```
 
-Paste the keys and the hash into `zenith.config.js`, then add the snippet to your layout:
+Paste the keys and the hash into `zenith.config.js`, then drop the component into your layout:
 
 ```tsx
-import { trackerScriptProps } from 'zenith-analytics'
+import { Analytics } from 'zenith-analytics/next'
 import config from '../zenith.config.js'
 
-// In <head>:
-<script {...trackerScriptProps(config)} />
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Analytics config={config} />
+      </body>
+    </html>
+  )
+}
 ```
 
 ### 4. See the data
@@ -325,16 +333,19 @@ npx zenith hash          # prints a bcrypt hash for the dashboard password
 ```
 
 `zenith init` writes `zenith.config.js`, scaffolds the dashboard route, and adds the config to
-`.gitignore` — it holds two secrets. Fill in the keys from **Add site**, then add the snippet to
-your layout:
+`.gitignore` — it holds two secrets. Fill in the keys from **Add site**, then drop the component
+into your layout:
 
 ```tsx
-import { trackerScriptProps } from 'zenith-analytics'
+import { Analytics } from 'zenith-analytics/next'
 import config from '../zenith.config.js'
 
-// In <head>:
-<script {...trackerScriptProps(config)} />
+<Analytics config={config} />
 ```
+
+Render it on the server — a layout already is. That keeps the snippet inline, where the browser
+runs it, and keeps the config's secrets out of the browser payload. `trackerScriptProps(config)`
+and `trackerScriptTag(config)` are still there for anything that is not a React server component.
 
 Custom events, from anywhere in the client bundle:
 

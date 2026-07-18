@@ -8,6 +8,8 @@ export default defineConfig({
     client: 'src/client.ts',
     // Next.js adapters.
     next: 'src/next.ts',
+    // The <Analytics /> component, for any React app.
+    react: 'src/react.tsx',
     cli: 'src/cli.ts',
   },
   format: ['esm', 'cjs'],
@@ -15,6 +17,8 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   target: 'node18',
-  // bcryptjs stays external so the owner's bundler resolves one copy.
-  external: ['bcryptjs'],
+  // bcryptjs stays external so the owner's bundler resolves one copy. React is
+  // the app's, never ours: bundling a second copy would break hooks and double
+  // the payload.
+  external: ['bcryptjs', 'react', 'react/jsx-runtime'],
 })

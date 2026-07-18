@@ -1,6 +1,6 @@
 {
   "name": "zenith-analytics",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Privacy-first analytics for your site — cookieless tracking and a dashboard that lives on your own domain.",
   "license": "MIT",
   "author": "MUKE JOHNBAPTIST",
@@ -35,6 +35,11 @@
       "types": "./dist/next.d.ts",
       "import": "./dist/next.js",
       "require": "./dist/next.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
     }
   },
   "bin": {
@@ -60,7 +65,19 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

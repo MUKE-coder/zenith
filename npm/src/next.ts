@@ -10,6 +10,11 @@ import { createHandler } from './proxy.js'
  * translate between Next's two request shapes and Request/Response.
  */
 
+// Re-exported so tracking and the dashboard route come from one import path.
+// It lives in ./react so a non-Next React app can have it too.
+export { Analytics } from './react.js'
+export type { AnalyticsProps } from './react.js'
+
 /**
  * App Router.
  *

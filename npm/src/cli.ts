@@ -110,12 +110,16 @@ Next:
 
      and paste the result into passwordHash.
 
-  3. Add the tracking snippet to your ${router === 'app' ? 'app/layout.tsx' : 'pages/_document.tsx'}:
+  3. Add the tracking component to your ${router === 'app' ? 'app/layout.tsx' : 'pages/_document.tsx'}:
 
-       import { trackerScriptProps } from 'zenith-analytics'
+       import { Analytics } from 'zenith-analytics/next'
        import config from './zenith.config.js'
 
-       <script {...trackerScriptProps(config)} />
+       <Analytics config={config} />
+
+     Render it on the server -- a layout already is. That keeps the snippet
+     inline, where the browser will run it, and keeps the config's secrets
+     out of the browser payload.
 ${
   router === 'pages'
     ? `

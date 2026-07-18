@@ -40,17 +40,41 @@ module.exports = {
 
 ## Track pageviews
 
-Add the snippet to your app's `<head>`:
+Drop the component into your root layout:
 
 ```tsx
-import { trackerScriptProps } from 'zenith-analytics'
+import { Analytics } from 'zenith-analytics/next'
 import config from '../zenith.config.js'
 
-// In your layout / _document head:
-<script {...trackerScriptProps(config)} />
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Analytics config={config} />
+      </body>
+    </html>
+  )
+}
 ```
 
-Pageviews (including client-side route changes) are recorded automatically.
+That's it. Pageviews — including client-side route changes — are recorded from
+then on.
+
+**Render it on the server**, which a layout does by default. Two reasons, one
+rule: the snippet is inlined into the HTML and finds its configuration through
+`document.currentScript`, so a script inserted later by client-side React would
+never run; and `zenith.config.js` also holds `apiKey` and `jwtSecret`, which
+stay on the server as long as the component does. Inside a `'use client'`
+component, React would serialize every field you passed into the browser
+payload.
+
+The component itself reads only `backendUrl` and `siteKey`, and the site key is
+public by design — it ships in the page and authorizes writing events, nothing
+more.
+
+Not using React, or want the script tag yourself? `trackerScriptProps(config)`
+returns the props, and `trackerScriptTag(config)` returns plain HTML.
 
 ## Custom events
 
