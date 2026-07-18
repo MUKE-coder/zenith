@@ -1,0 +1,89 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, #000 55%, transparent);
+  animation: fade var(--duration) var(--ease);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-8);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  animation: rise var(--duration) var(--ease);
+}
+
+.title {
+  font-size: var(--text-h1);
+  margin-bottom: var(--space-1);
+}
+
+.subtitle {
+  margin-bottom: var(--space-8);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+}
+
+.field + .field {
+  margin-top: var(--space-6);
+}
+
+.help {
+  margin-top: var(--space-2);
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+}
+
+.help code {
+  font-size: 0.95em;
+  color: var(--text-muted);
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--text-subtle);
+}
+
+.error {
+  margin-top: var(--space-6);
+  padding: var(--space-3);
+  font-size: var(--text-label);
+  color: var(--negative);
+  background: color-mix(in srgb, var(--negative) 8%, transparent);
+  border-radius: var(--radius-button);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-8);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .dialog {
+    animation: none;
+  }
+}

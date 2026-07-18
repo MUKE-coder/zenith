@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { IconGlobe } from '../components/icons'
 import { EmptyState, Panel } from '../components/Panel'
 import { api } from '../lib/api'
 import type { Site } from '../lib/types'
@@ -20,7 +21,11 @@ export function Setup({ site, onDeleted }: Props) {
   if (!site) {
     return (
       <Panel title="Setup">
-        <EmptyState title="No site selected." hint="Add a site to see its install steps." />
+        <EmptyState
+          icon={<IconGlobe />}
+          title="No site selected"
+          hint="Pick a site above, or add one — its keys and install steps appear here."
+        />
       </Panel>
     )
   }
@@ -77,17 +82,32 @@ export function Setup({ site, onDeleted }: Props) {
         </div>
       </Panel>
 
-      <Panel title="Keys">
+      <Panel title="Keys and URL">
+        <p className={styles.stepLabel}>
+          Zenith generated these when you added {site.name} — you never invent them. These
+          three values are everything your app needs.
+        </p>
+        <KeyRow
+          name="Zenith URL"
+          envName="ZENITH_URL"
+          tag="Public"
+          tagClass={styles.public}
+          value={backend}
+          hint="Where your app sends events and reads stats: this console's own address."
+          alwaysVisible
+        />
         <KeyRow
           name="Site key"
+          envName="ZENITH_SITE_KEY"
           tag="Public"
           tagClass={styles.public}
           value={site.site_key}
-          hint="Ships in the snippet. Anyone can read it. Writes events only."
+          hint="Ships in the snippet, so anyone can read it. Writes events only."
           alwaysVisible
         />
         <KeyRow
           name="API key"
+          envName="ZENITH_API_KEY"
           tag="Secret"
           tagClass={styles.secret}
           value={site.api_key}
@@ -102,25 +122,37 @@ export function Setup({ site, onDeleted }: Props) {
   )
 }
 
-function CodeBlock({ code }: { code: string }) {
+/**
+ * Copies a value and says so.
+ *
+ * A silent copy button leaves you pressing it twice to be sure, so it
+ * confirms and then quietly goes back to offering.
+ */
+function CopyButton({ value, className }: { value: string; className?: string }) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(code)
+      await navigator.clipboard.writeText(value)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // Clipboard blocked (insecure origin, denied permission). The code is
+      // Clipboard blocked (insecure origin, denied permission). The value is
       // right there to select by hand; a failed copy is not worth an error.
     }
   }
 
   return (
+    <button type="button" className={className ?? styles.reveal} onClick={copy}>
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
+
+function CodeBlock({ code }: { code: string }) {
+  return (
     <div className={styles.code}>
-      <button type="button" className={styles.copy} onClick={copy}>
-        {copied ? 'Copied' : 'Copy'}
-      </button>
+      <CopyButton value={code} className={styles.copy} />
       {code}
     </div>
   )
@@ -128,6 +160,8 @@ function CodeBlock({ code }: { code: string }) {
 
 type KeyRowProps = {
   name: string
+  /** The name this value goes by in config — what you actually paste it into. */
+  envName: string
   tag: string
   tagClass: string
   value: string
@@ -135,25 +169,37 @@ type KeyRowProps = {
   alwaysVisible?: boolean
 }
 
-function KeyRow({ name, tag, tagClass, value, hint, alwaysVisible }: KeyRowProps) {
+function KeyRow({ name, envName, tag, tagClass, value, hint, alwaysVisible }: KeyRowProps) {
   // The secret key is hidden until asked for: it should not sit in a
   // screenshot or over someone's shoulder by default.
   const [shown, setShown] = useState(Boolean(alwaysVisible))
 
   return (
     <div className={styles.keyRow}>
-      <div className={styles.keyMeta}>
-        <div className={styles.keyName}>{name}</div>
-        <div className={`${styles.keyTag} ${tagClass}`}>{tag}</div>
+      <div className={styles.keyHead}>
+        <div className={styles.keyMeta}>
+          <span className={styles.keyName}>{name}</span>
+          <span className={`${styles.keyTag} ${tagClass}`}>{tag}</span>
+        </div>
+        <div className={styles.keyControls}>
+          {!alwaysVisible && (
+            <button type="button" className={styles.reveal} onClick={() => setShown((v) => !v)}>
+              {shown ? 'Hide' : 'Reveal'}
+            </button>
+          )}
+          {/* Copy works whether or not the value is on screen: you rarely
+              need to read a secret, only to paste it. */}
+          <CopyButton value={value} />
+        </div>
       </div>
-      <div className={styles.keyValue} title={shown ? value : hint}>
-        {shown ? value : hint}
+
+      <code className={styles.keyEnv}>{envName}</code>
+
+      <div className={styles.keyValue} title={shown ? value : undefined}>
+        {shown ? value : '•'.repeat(32)}
       </div>
-      {!alwaysVisible && (
-        <button type="button" className={styles.reveal} onClick={() => setShown((v) => !v)}>
-          {shown ? 'Hide' : 'Reveal'}
-        </button>
-      )}
+
+      <p className={styles.keyHint}>{hint}</p>
     </div>
   )
 }

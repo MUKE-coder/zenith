@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import styles from './components/AppShell.module.css'
+import {
+  IconEvents,
+  IconGlobe,
+  IconOverview,
+  IconPlus,
+  IconSeo,
+  IconSettings,
+  IconSetup,
+  IconSignOut,
+  ZenithMark,
+} from './components/icons'
 import { Login } from './components/Login'
+import { NewSiteDialog } from './components/NewSiteDialog'
 import { EmptyState, ErrorState, Skeleton } from './components/Panel'
 import { RangePicker } from './components/RangePicker'
 import { Realtime } from './components/Realtime'
@@ -23,6 +36,19 @@ type Tab = 'overview' | 'events' | 'audits' | 'setup' | 'settings'
 
 /** Remembers the site across reloads, so a refresh does not lose your place. */
 const SITE_KEY = 'zenith.site'
+
+type NavItem = { tab: Tab; label: string; icon: ReactNode; developerOnly?: boolean }
+
+const NAV: NavItem[] = [
+  { tab: 'overview', label: 'Overview', icon: <IconOverview /> },
+  { tab: 'events', label: 'Events', icon: <IconEvents /> },
+  { tab: 'audits', label: 'SEO', icon: <IconSeo /> },
+  // Setup shows the secret api key, so it is developer-only.
+  { tab: 'setup', label: 'Setup', icon: <IconSetup />, developerOnly: true },
+  // Settings is the deployment's, and it lists every client. An owner must
+  // never see it.
+  { tab: 'settings', label: 'Settings', icon: <IconSettings />, developerOnly: true },
+]
 
 export default function App() {
   const { session, checking, signOut, expire } = useAuth()
@@ -54,6 +80,9 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
   const [siteId, setSiteId] = useState<string | undefined>(
     () => ownSiteId ?? localStorage.getItem(SITE_KEY) ?? undefined,
   )
+  const [addingSite, setAddingSite] = useState(false)
+  // A site that has been created but is not in the fetched list yet.
+  const [pendingSiteId, setPendingSiteId] = useState<string>()
 
   // An owner never lists sites: their credential names the only one they may
   // read, and the endpoint would refuse them anyway.
@@ -68,10 +97,19 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
   // one has since been deleted.
   useEffect(() => {
     if (isOwner || list.length === 0) return
+
+    // A just-created site is not in the list until the refetch lands. Falling
+    // back to the first one in the meantime would steal the selection from
+    // under the developer who just added it.
+    if (pendingSiteId) {
+      if (!list.some((s) => s.id === pendingSiteId)) return
+      setPendingSiteId(undefined)
+    }
+
     if (!siteId || !list.some((s) => s.id === siteId)) {
       setSiteId(list[0].id)
     }
-  }, [isOwner, list, siteId])
+  }, [isOwner, list, siteId, pendingSiteId])
 
   useEffect(() => {
     if (siteId && !isOwner) localStorage.setItem(SITE_KEY, siteId)
@@ -84,71 +122,52 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
   // one from the list.
   const ready = isOwner || Boolean(siteId)
 
+  const visibleNav = NAV.filter((item) => !item.developerOnly || !isOwner)
+
+  function onSiteCreated(site: Site) {
+    setAddingSite(false)
+    setPendingSiteId(site.id)
+    setSiteId(site.id)
+    sites.reload()
+    // Land on Setup: a site with no snippet installed collects nothing, and
+    // that is the very next thing to do.
+    setTab('setup')
+  }
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         {/* Embedded, this is a page of the owner's site and it says so. The
             console is Zenith's, and says that. */}
         <div className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true" />
-          <span>{embed?.siteDomain ?? 'Zenith'}</span>
+          {embed ? (
+            <span className={styles.mark} aria-hidden="true" />
+          ) : (
+            <ZenithMark size={24} />
+          )}
+          <span className={styles.brandName}>{embed?.siteDomain ?? 'Zenith'}</span>
         </div>
 
         <nav className={styles.nav} aria-label="Sections">
-          <button
-            type="button"
-            className={`${styles.navItem} ${tab === 'overview' ? styles.navItemActive : ''}`}
-            aria-current={tab === 'overview' ? 'page' : undefined}
-            onClick={() => setTab('overview')}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            className={`${styles.navItem} ${tab === 'events' ? styles.navItemActive : ''}`}
-            aria-current={tab === 'events' ? 'page' : undefined}
-            onClick={() => setTab('events')}
-          >
-            Events
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.navItem} ${tab === 'audits' ? styles.navItemActive : ''}`}
-            aria-current={tab === 'audits' ? 'page' : undefined}
-            onClick={() => setTab('audits')}
-          >
-            SEO
-          </button>
-
-          {/* Setup shows the secret api key, so it is developer-only. */}
-          {!isOwner && (
+          {visibleNav.map((item) => (
             <button
+              key={item.tab}
               type="button"
-              className={`${styles.navItem} ${tab === 'setup' ? styles.navItemActive : ''}`}
-              aria-current={tab === 'setup' ? 'page' : undefined}
-              onClick={() => setTab('setup')}
+              className={`${styles.navItem} ${tab === item.tab ? styles.navItemActive : ''}`}
+              aria-current={tab === item.tab ? 'page' : undefined}
+              onClick={() => setTab(item.tab)}
             >
-              Setup
+              <span className={styles.navIcon}>{item.icon}</span>
+              {item.label}
             </button>
-          )}
-
-          {/* Settings is the deployment's, and it lists every client. An owner
-              must never see it. */}
-          {!isOwner && (
-            <button
-              type="button"
-              className={`${styles.navItem} ${tab === 'settings' ? styles.navItemActive : ''}`}
-              aria-current={tab === 'settings' ? 'page' : undefined}
-              onClick={() => setTab('settings')}
-            >
-              Settings
-            </button>
-          )}
+          ))}
         </nav>
 
         <div className={styles.sidebarFoot}>
-          <button type="button" className="button-ghost" onClick={() => void onSignOut()}>
+          <button type="button" className={styles.signOut} onClick={() => void onSignOut()}>
+            <span className={styles.navIcon}>
+              <IconSignOut />
+            </span>
             Sign out
           </button>
         </div>
@@ -163,11 +182,23 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
               {isOwner ? (
                 <strong>{selected?.name ?? embed?.siteDomain ?? 'Analytics'}</strong>
               ) : (
-                <SiteSwitcher
-                  sites={list}
-                  selected={selected}
-                  onSelect={(site) => setSiteId(site.id)}
-                />
+                <>
+                  <SiteSwitcher
+                    sites={list}
+                    selected={selected}
+                    onSelect={(site) => setSiteId(site.id)}
+                  />
+                  {list.length > 0 && (
+                    <button
+                      type="button"
+                      className={`button-ghost ${styles.addSite}`}
+                      onClick={() => setAddingSite(true)}
+                    >
+                      <IconPlus />
+                      New site
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -199,6 +230,7 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
             tab={tab}
             range={range}
             onUnauthorized={onUnauthorized}
+            onAddSite={() => setAddingSite(true)}
             onSiteDeleted={() => {
               setSiteId(undefined)
               setTab('overview')
@@ -207,6 +239,10 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
           />
         </main>
       </div>
+
+      {addingSite && (
+        <NewSiteDialog onClose={() => setAddingSite(false)} onCreated={onSiteCreated} />
+      )}
     </div>
   )
 }
@@ -238,6 +274,7 @@ type BodyProps = {
   tab: Tab
   range: RangeKey
   onUnauthorized: () => void
+  onAddSite: () => void
   onSiteDeleted: () => void
 }
 
@@ -253,6 +290,7 @@ function Body({
   tab,
   range,
   onUnauthorized,
+  onAddSite,
   onSiteDeleted,
 }: BodyProps) {
   // Settings needs no site: it is the deployment's, and it loads its own data.
@@ -268,12 +306,20 @@ function Body({
     return <Skeleton width="100%" height={120} />
   }
 
-  // The first thing a new deployment shows, so it has to say what to do next.
+  // The first thing a new deployment shows, so it has to say what to do next
+  // and hand over the control that does it.
   if (!hasSites) {
     return (
       <EmptyState
-        title="No sites yet."
-        hint="Add one with POST /api/sites to start collecting."
+        icon={<IconGlobe />}
+        title="Add your first site"
+        hint="Zenith measures one site per set of keys. Add one and you'll get a snippet to drop into its pages — pageviews start arriving the moment it's live."
+        action={
+          <button type="button" className="button-primary" onClick={onAddSite}>
+            <IconPlus />
+            Add site
+          </button>
+        }
       />
     )
   }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { IconClock, IconSeo } from '../components/icons'
 import { EmptyState, ErrorState, Panel, SkeletonRows } from '../components/Panel'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../lib/api'
@@ -102,8 +103,9 @@ export function Audits({ siteId, ready, onUnauthorized }: Props) {
           <SkeletonRows rows={2} />
         ) : list.length === 0 ? (
           <EmptyState
-            title="No audits yet."
-            hint="Run one to check titles, links, structured data, and page speed."
+            icon={<IconSeo />}
+            title="No audits yet"
+            hint="An audit opens your pages in a real browser and reports what search engines see — titles, meta descriptions, broken links, structured data, and load speed."
           />
         ) : (
           <History
@@ -176,8 +178,9 @@ function AuditReport({ detail }: { detail: { audit: { status: AuditStatus; score
     return (
       <Panel title="Result">
         <EmptyState
-          title="The audit is still running."
-          hint="Rendering every page with a real browser takes a few minutes."
+          icon={<IconClock />}
+          title="Audit in progress"
+          hint="Every page is being opened in a real browser, which takes a few minutes. You can leave this page — the result will be here when it finishes."
         />
       </Panel>
     )

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { BreakdownTable } from '../components/BreakdownTable'
+import { IconCursor, IconEvents } from '../components/icons'
 import { EmptyState, ErrorState, Panel, SkeletonRows } from '../components/Panel'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../lib/api'
@@ -63,8 +64,9 @@ export function Events({ siteId, ready, range, onUnauthorized }: Props) {
           <SkeletonRows rows={4} />
         ) : !eventRows || eventRows.length === 0 ? (
           <EmptyState
-            title="No custom events yet."
-            hint="Call zenith.track('signup') to record one."
+            icon={<IconEvents />}
+            title="No custom events yet"
+            hint="Pageviews arrive on their own. Custom events are yours to name — call track('signup') anywhere in your app and it shows up here."
           />
         ) : (
           <EventList
@@ -78,8 +80,9 @@ export function Events({ siteId, ready, range, onUnauthorized }: Props) {
       <Panel title={selected ? `Properties of “${selected}”` : 'Properties'}>
         {!selected ? (
           <EmptyState
-            title="Select an event."
-            hint="Its properties and their values appear here."
+            icon={<IconCursor />}
+            title="Select an event"
+            hint="Pick one on the left to see the properties it carried and how often each value appeared."
           />
         ) : (
           <BreakdownTable

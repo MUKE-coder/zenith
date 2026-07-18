@@ -16,16 +16,27 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  font-size: var(--text-h2);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+.brandName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Embedded, the console wears the owner's domain rather than the Zenith
+   mark, so it keeps a neutral dot. */
 .mark {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   background: var(--accent);
+  flex: none;
 }
 
 .nav {
@@ -34,10 +45,14 @@
   gap: var(--space-1);
 }
 
-.navItem {
-  display: block;
+.navItem,
+.signOut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
   padding: var(--space-2) var(--space-3);
+  font-family: inherit;
   font-size: var(--text-body);
   color: var(--text-muted);
   text-align: left;
@@ -50,9 +65,29 @@
     color var(--duration) var(--ease);
 }
 
-.navItem:hover {
+.navItem:hover,
+.signOut:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+
+/* The glyph is quieter than its label until the item is active, so the
+   sidebar reads as words first and icons second. */
+.navIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-subtle);
+  transition: color var(--duration) var(--ease);
+}
+
+.navIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.navItem:hover .navIcon,
+.signOut:hover .navIcon {
+  color: var(--text-muted);
 }
 
 /* Accent marks the active item. One of the few places it is spent. */
@@ -62,11 +97,25 @@
   font-weight: 500;
 }
 
+.navItemActive .navIcon,
+.navItemActive:hover .navIcon {
+  color: var(--accent);
+}
+
+.addSite {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.addSite svg {
+  width: 16px;
+  height: 16px;
+}
+
 .sidebarFoot {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-2);
 }
 
@@ -150,12 +199,30 @@
     border-bottom: 1px solid var(--border);
   }
 
+  /* Icons make each item wider than the text-only version, so the strip
+     scrolls rather than wrapping or clipping the last section. */
   .nav {
     flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navItem {
+    width: auto;
+    white-space: nowrap;
   }
 
   .sidebarFoot {
     margin-top: 0;
+  }
+
+  .signOut {
+    width: auto;
+    white-space: nowrap;
   }
 
   .topbar {

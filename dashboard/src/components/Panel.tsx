@@ -21,17 +21,33 @@ export function Panel({ title, action, children }: PanelProps) {
   )
 }
 
+type EmptyStateProps = {
+  title: string
+  hint?: string
+  /** A glyph for the state. Sized and coloured by the wrapper. */
+  icon?: ReactNode
+  /** The way out: the one thing to do next, as a real control. */
+  action?: ReactNode
+}
+
 /**
  * What a panel shows when there is nothing to show.
  *
- * The hint says what to do next. An empty state that only says "No data" tells
- * the reader they have a problem without telling them how to solve it.
+ * The hint says what to do next, and where there is a single next step the
+ * action makes it clickable. An empty state that only says "No data" tells the
+ * reader they have a problem without telling them how to solve it.
  */
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint, icon, action }: EmptyStateProps) {
   return (
     <div className={styles.empty}>
+      {icon && (
+        <span className={styles.emptyIcon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <p className={styles.emptyTitle}>{title}</p>
       {hint && <p className={styles.emptyHint}>{hint}</p>}
+      {action && <div className={styles.emptyAction}>{action}</div>}
     </div>
   )
 }

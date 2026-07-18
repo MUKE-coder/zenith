@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
+import { IconGlobe } from '../components/icons'
 import { EmptyState, ErrorState, Panel, SkeletonRows } from '../components/Panel'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../lib/api'
@@ -44,7 +45,11 @@ export function Settings({ onUnauthorized }: Props) {
         ) : sites.loading || !sites.data ? (
           <SkeletonRows rows={3} />
         ) : sites.data.sites.length === 0 ? (
-          <EmptyState title="No sites yet." hint="Add a site to send its owner a report." />
+          <EmptyState
+            icon={<IconGlobe />}
+            title="No sites yet"
+            hint="Once you add a site and give it an owner email, that owner gets last month's report on the 1st."
+          />
         ) : (
           <>
             <p className={styles.hint} style={{ marginTop: 0, marginBottom: 'var(--space-4)' }}>

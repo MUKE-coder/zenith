@@ -14,6 +14,7 @@ import {
 import { useThemeColors } from '../hooks/useThemeColors'
 import { compactNumber, exactNumber, formatBucket, formatBucketFull } from '../lib/format'
 import type { Granularity, Timeseries } from '../lib/types'
+import { IconChart } from './icons'
 import { EmptyState, ErrorState, Skeleton } from './Panel'
 import styles from './TrafficChart.module.css'
 
@@ -60,8 +61,9 @@ export function TrafficChart({ data, loading, error, onRetry }: Props) {
   if (points.every((p) => p.pageviews === 0 && p.visitors === 0)) {
     return (
       <EmptyState
-        title="No traffic in this period."
-        hint="Try a wider date range, or check the snippet is installed."
+        icon={<IconChart />}
+        title="No traffic in this period"
+        hint="Nothing was recorded in this range. Try a wider one — or if this site is newly added, check the snippet is live on the page."
       />
     )
   }

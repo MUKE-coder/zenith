@@ -54,26 +54,64 @@
 
 .keyRow {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border);
 }
 
 .keyRow:last-child {
   border-bottom: none;
+  padding-bottom: 0;
+}
+
+.keyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .keyMeta {
-  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.keyControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
 .keyName {
   font-weight: 500;
 }
 
+/* Public vs Secret is the single most consequential fact about a key, so it
+   reads as a chip rather than a line of prose. */
 .keyTag {
+  padding: 1px var(--space-2);
   font-size: var(--text-label);
+  font-weight: 500;
+  border-radius: var(--radius-chip);
+  background: var(--surface-2);
+}
+
+/* The name to paste it under, so the console and the config agree. */
+.keyEnv {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+}
+
+.keyHint {
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: var(--text-subtle);
 }
 
 .public {
@@ -85,14 +123,16 @@
 }
 
 .keyValue {
-  flex: 1;
   min-width: 0;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-data);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-x: auto;
   white-space: nowrap;
-  color: var(--text-muted);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
 }
 
 .reveal {
