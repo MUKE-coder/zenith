@@ -172,6 +172,9 @@ func (s *Server) Routes() http.Handler {
 	// The built SPA: the console at /dashboard, and the same bundle the
 	// domain-native proxy points an owner's browser at.
 	if assets, ok := dashboardAssets(s.dashboardDir); ok {
+		// Bare host lands on the console. Temporary, not permanent: a future
+		// build may put a landing page here, and a cached 301 would be a trap.
+		r.Get("/", http.RedirectHandler("/dashboard/", http.StatusFound).ServeHTTP)
 		r.Handle("/dashboard", http.RedirectHandler("/dashboard/", http.StatusMovedPermanently))
 		r.Handle("/dashboard/*", http.StripPrefix("/dashboard/", assets))
 	}

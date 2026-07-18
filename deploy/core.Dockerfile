@@ -2,7 +2,20 @@
 #
 # CGO is required: DuckDB is a C++ library. That rules out a scratch/alpine
 # final stage, so we build and run on Debian slim and keep the image lean by
-# copying only the binary forward.
+# copying only the binary — and the built console — forward.
+
+# The console SPA. Core serves it from ZENITH_DASHBOARD_DIR, so it has to be in
+# the image: without it, every /dashboard/ path 404s.
+FROM node:22-bookworm-slim AS dashboard
+
+WORKDIR /dashboard
+
+# Cache the dependency install separately from source changes.
+COPY dashboard/package.json dashboard/package-lock.json ./
+RUN npm ci
+
+COPY dashboard/ ./
+RUN npm run build
 
 FROM golang:1.26-bookworm AS build
 
@@ -27,6 +40,11 @@ RUN apt-get update \
 RUN useradd --system --uid 10001 --create-home zenith
 
 COPY --from=build /out/core /usr/local/bin/core
+
+# The built console. ZENITH_DASHBOARD_DIR points core here; the default
+# (./dashboard) is a dev-only relative path that does not exist in the image.
+COPY --from=dashboard /dashboard/dist /usr/local/share/zenith/dashboard
+ENV ZENITH_DASHBOARD_DIR=/usr/local/share/zenith/dashboard
 
 # The compose volume mounts here.
 RUN mkdir -p /data && chown zenith:zenith /data
