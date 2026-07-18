@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 
-import { IconClock, IconSeo } from '../components/icons'
+import { IconClock, IconDownload, IconSeo } from '../components/icons'
 import { EmptyState, ErrorState, Panel, SkeletonRows } from '../components/Panel'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../lib/api'
-import type { AuditCheck, AuditPage, AuditStatus } from '../lib/types'
+import { auditFilename, auditMarkdown, downloadFile } from '../lib/report'
+import type { AuditCheck, AuditDetail, AuditPage, AuditStatus } from '../lib/types'
 import styles from './Audits.module.css'
 
 type Props = {
@@ -162,7 +163,7 @@ function statusLabel(status: AuditStatus): string {
   }
 }
 
-function AuditReport({ detail }: { detail: { audit: { status: AuditStatus; score: number; error?: string }; pages: AuditPage[] } }) {
+function AuditReport({ detail }: { detail: AuditDetail }) {
   const { audit, pages } = detail
 
   if (audit.status === 'failed') {
@@ -187,7 +188,43 @@ function AuditReport({ detail }: { detail: { audit: { status: AuditStatus; score
   }
 
   return (
-    <Panel title="Result">
+    <Panel
+      title="Result"
+      action={
+        // Taking the findings elsewhere -- an editor, an issue tracker, a
+        // model you ask to fix them -- is most of what anyone does with an
+        // audit, and re-typing 50 pages of them is not reasonable.
+        <div className={styles.exports}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() =>
+              downloadFile(
+                auditFilename(detail, 'md'),
+                auditMarkdown(detail),
+                'text/markdown;charset=utf-8',
+              )
+            }
+          >
+            <IconDownload />
+            Markdown
+          </button>
+          <button
+            type="button"
+            className="button-ghost"
+            onClick={() =>
+              downloadFile(
+                auditFilename(detail, 'json'),
+                JSON.stringify(detail, null, 2),
+                'application/json',
+              )
+            }
+          >
+            JSON
+          </button>
+        </div>
+      }
+    >
       <div className={styles.siteScore}>
         <span className={styles.siteScoreValue}>{audit.score}</span>
         <span style={{ color: 'var(--text-muted)' }}>

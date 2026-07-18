@@ -136,6 +136,16 @@ export function IconPlus({ className }: { className?: string }) {
   )
 }
 
+export function IconDownload({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M12 3v12" />
+      <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+      <path d="M4 20h16" />
+    </Svg>
+  )
+}
+
 export function IconChevronDown({ className }: { className?: string }) {
   return (
     <Svg className={className}>
