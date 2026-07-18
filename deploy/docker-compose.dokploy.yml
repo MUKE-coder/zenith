@@ -12,6 +12,16 @@
 # Dokploy server first.
 
 services:
+  # Downloads the country lookup database into the shared volume, then exits.
+  # Countries would otherwise need a file fetched and mounted by hand, which is
+  # a lot of ceremony for something every deployment wants.
+  geoip:
+    extends:
+      file: geoip.yml
+      service: geoip
+    volumes:
+      - zenith-data:/data
+
   core:
     build:
       context: ..
@@ -25,8 +35,16 @@ services:
       ZENITH_TOKEN_TTL: ${ZENITH_TOKEN_TTL:-24h}
       ZENITH_ADMIN_EMAIL: ${ZENITH_ADMIN_EMAIL:-}
       ZENITH_ADMIN_PASSWORD: ${ZENITH_ADMIN_PASSWORD:-}
+      # Set to an empty value to turn country lookup off entirely.
+      ZENITH_GEOIP_DB: ${ZENITH_GEOIP_DB-/data/country.mmdb}
     volumes:
       - zenith-data:/data
+    depends_on:
+      # Wait for the download to finish so the file is in place before core
+      # opens it. The downloader always exits 0, so a failed fetch delays boot
+      # briefly but never blocks it.
+      geoip:
+        condition: service_completed_successfully
     # No host port. Traefik reaches core by service name over dokploy-network;
     # exposing 8080 to the network is all it needs, and nothing is published on
     # the server's public interface.
@@ -41,8 +59,12 @@ services:
       retries: 3
       start_period: 10s
 
+  # Runs unconditionally here, unlike the plain compose file where it sits
+  # behind the `seo` profile. Dokploy has no way to select a compose profile,
+  # so a profiled service is simply never started -- and an SEO audit then
+  # queues forever with nothing to claim it. The cost is the worker's ~1GB
+  # Chromium image; delete this service if you do not want audits.
   audit-worker:
-    profiles: ['seo']
     build:
       context: ..
       dockerfile: deploy/audit-worker.Dockerfile

@@ -290,10 +290,20 @@ everyone out. Never use it in a deployment.
 
 ### Country data (GeoIP)
 
-Country comes from a local IP lookup database. It can't ship with Zenith — the licences don't
-allow redistribution — so you supply it. Without one, Zenith runs fine and country reads
-`Unknown`.
+Country comes from a local IP lookup database. It can't ship inside Zenith — the licences don't
+allow redistribution — so the compose files fetch one for you.
 
+**This is automatic.** `docker compose up` runs a small `geoip` service that downloads a current
+[DB-IP Lite](https://db-ip.com) country database into the data volume and exits; core waits for
+it and opens it on boot. It re-downloads only once the file is over 30 days old, and it never
+fails a deployment — a failed download just means country reads `Unknown`. Set `ZENITH_GEOIP_DB`
+to an empty value to turn country lookup off.
+
+DB-IP Lite is CC BY 4.0: attribute [DB-IP](https://db-ip.com) if you publish country figures.
+
+#### Supplying it yourself
+
+Only needed to pin a particular database, prefer MaxMind's, or run without the `geoip` service.
 Zenith reads any **MaxMind-format country `.mmdb`**. Two free sources:
 
 - **[DB-IP Lite Country](https://db-ip.com/db/download/ip-to-country-lite)** — no account, direct

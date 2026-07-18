@@ -1,0 +1,69 @@
+# The country database downloader, shared by the compose files via `extends`.
+#
+# Zenith cannot ship a geo database -- the licences forbid redistribution -- so
+# this fetches one at deploy time instead of asking every operator to download,
+# unzip, and mount a file by hand.
+#
+# It uses DB-IP Lite, which needs no account. The data is CC BY 4.0: if you
+# expose country figures publicly, attribute DB-IP (https://db-ip.com).
+#
+# It never fails a deployment. Every path exits 0, because country data is a
+# nice-to-have and analytics ingestion is not.
+
+services:
+  geoip:
+    image: alpine:3.20
+    # Runs once per deploy and exits. Restarting it would re-download monthly
+    # data on every container restart.
+    restart: 'no'
+    command:
+      - sh
+      - -c
+      - |
+        set -u
+        TARGET=/data/country.mmdb
+
+        # This container is the first to mount the volume, so on a fresh deploy
+        # Docker creates /data from *this* image -- root-owned, because alpine
+        # has no /data. Core runs unprivileged as uid 10001 and would then fail
+        # to open its databases. Hand the directory over before anything else.
+        chown 10001:10001 /data 2>/dev/null || true
+
+        # Monthly data. Re-downloading a file that is still current wastes a
+        # deploy's time and DB-IP's bandwidth.
+        if [ -f "$$TARGET" ] && [ -n "$$(find "$$TARGET" -mtime -30 2>/dev/null)" ]; then
+          echo "geoip: $$TARGET is less than 30 days old, keeping it"
+          exit 0
+        fi
+
+        apk add --no-cache ca-certificates wget >/dev/null 2>&1 || true
+
+        # Early in a month the current file may not be published yet, so fall
+        # back to the previous one rather than leaving the deployment with no
+        # database at all.
+        Y=$$(date -u +%Y)
+        M=$$(date -u +%m)
+        PM=$$((10#$$M - 1))
+        PY=$$Y
+        if [ "$$PM" -eq 0 ]; then PM=12; PY=$$((Y - 1)); fi
+        PREV=$$(printf '%s-%02d' "$$PY" "$$PM")
+
+        for MONTH in "$$Y-$$M" "$$PREV"; do
+          URL="https://download.db-ip.com/free/dbip-country-lite-$$MONTH.mmdb.gz"
+          echo "geoip: trying $$URL"
+          if wget -q -O /tmp/country.gz "$$URL"; then
+            # Unpack to a temporary path and move into place, so core can
+            # never open a half-written file.
+            if gunzip -c /tmp/country.gz > /tmp/country.mmdb 2>/dev/null; then
+              mv /tmp/country.mmdb "$$TARGET"
+              # Readable by core, which is not root.
+              chown 10001:10001 "$$TARGET" 2>/dev/null || true
+              echo "geoip: installed $$MONTH at $$TARGET"
+              exit 0
+            fi
+          fi
+        done
+
+        echo "geoip: could not download a database; country will be Unknown."
+        echo "geoip: everything else works. Supply one later with ZENITH_GEOIP_DB."
+        exit 0

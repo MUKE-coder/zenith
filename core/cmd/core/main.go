@@ -164,15 +164,23 @@ func run(log *slog.Logger) error {
 	}
 
 	countries, err := geo.Open(cfg.GeoIPDBPath)
+	geoReady := err == nil && cfg.GeoIPDBPath != ""
 	if err != nil {
-		return err
+		// A configured but unreadable database is not a reason to refuse to
+		// start. Country is a nice-to-have; ingestion is not -- and a
+		// deployment that downloads the file alongside core should never be
+		// one failed download away from collecting nothing.
+		log.Warn("geo database unavailable: country will be unknown",
+			"path", cfg.GeoIPDBPath, "error", err)
+		countries = geo.Unavailable{}
 	}
 	defer countries.Close()
 
-	if cfg.GeoIPDBPath == "" {
+	switch {
+	case cfg.GeoIPDBPath == "":
 		log.Info("no geo database configured: country will be unknown " +
-			"(set ZENITH_GEOIP_DB to a MaxMind country .mmdb to enable it)")
-	} else {
+			"(set ZENITH_GEOIP_DB to a country .mmdb to enable it)")
+	case geoReady:
 		log.Info("geo database ready", "path", cfg.GeoIPDBPath)
 	}
 
