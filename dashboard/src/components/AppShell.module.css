@@ -4,7 +4,15 @@
   min-height: 100%;
 }
 
+/* Stays put while the content scrolls, like the topbar above it. Pinned to
+   the viewport height with its own overflow, so a long nav scrolls inside the
+   sidebar rather than pushing Sign out off the bottom. */
 .sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
@@ -189,7 +197,12 @@
     grid-template-columns: 1fr;
   }
 
+  /* As a top strip it scrolls away with the page: two things stuck to top: 0
+     would sit on top of each other, and the topbar is the one worth keeping. */
   .sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
