@@ -1,5 +1,5 @@
 /**
- * The shape of `zenith.config.js` in the owner's project.
+ * The shape of `config/zenith.ts` in the owner's project.
  *
  * This file is read server-side only. Two of its fields are secrets that must
  * never reach a browser: `apiKey` and `jwtSecret`.
@@ -40,7 +40,7 @@ export interface ZenithConfig {
   sessionTtl?: number
 }
 
-/** Applied when `zenith.config.js` leaves a field out. */
+/** Applied when `config/zenith.ts` leaves a field out. */
 export const defaultConfig = {
   dashboardPath: '/analytics-dashboard',
   protected: true,
@@ -69,17 +69,17 @@ export function resolveConfig(input: Partial<ZenithConfig>): ZenithConfig {
 
   if (!config.backendUrl) {
     throw new ConfigError(
-      'zenith.config.js: set backendUrl to your Zenith service, e.g. https://zenith.example.com',
+      'Zenith config: set backendUrl to your Zenith service, e.g. https://zenith.example.com',
     )
   }
   if (!isHttpUrl(config.backendUrl)) {
-    throw new ConfigError(`zenith.config.js: backendUrl must be an http(s) URL, got "${config.backendUrl}"`)
+    throw new ConfigError(`Zenith config: backendUrl must be an http(s) URL, got "${config.backendUrl}"`)
   }
   if (!config.siteKey) {
-    throw new ConfigError('zenith.config.js: set siteKey to your site\'s public key (zk_...)')
+    throw new ConfigError('Zenith config: set siteKey to your site\'s public key (zk_...)')
   }
   if (!config.apiKey) {
-    throw new ConfigError('zenith.config.js: set apiKey to your site\'s secret key (zk_...)')
+    throw new ConfigError('Zenith config: set apiKey to your site\'s secret key (zk_...)')
   }
 
   // A swap here would put the secret key in every visitor's page source and
@@ -87,18 +87,18 @@ export function resolveConfig(input: Partial<ZenithConfig>): ZenithConfig {
   // they are easy to transpose and impossible to tell apart by eye.
   if (config.siteKey === config.apiKey) {
     throw new ConfigError(
-      'zenith.config.js: siteKey and apiKey are the same value. The site key is public ' +
+      'Zenith config: siteKey and apiKey are the same value. The site key is public ' +
         '(it ships in the tracking snippet); the api key is secret. They must differ.',
     )
   }
 
   if (!config.siteDomain) {
-    throw new ConfigError('zenith.config.js: set siteDomain to your domain, e.g. example.com')
+    throw new ConfigError('Zenith config: set siteDomain to your domain, e.g. example.com')
   }
 
   if (!config.dashboardPath.startsWith('/')) {
     throw new ConfigError(
-      `zenith.config.js: dashboardPath must start with "/", got "${config.dashboardPath}"`,
+      `Zenith config: dashboardPath must start with "/", got "${config.dashboardPath}"`,
     )
   }
 
@@ -107,32 +107,32 @@ export function resolveConfig(input: Partial<ZenithConfig>): ZenithConfig {
   if (config.protected) {
     if (!config.passwordHash) {
       throw new ConfigError(
-        'zenith.config.js: protected is true but passwordHash is not set. ' +
+        'Zenith config: protected is true but passwordHash is not set. ' +
           'Generate one with `npx zenith hash` , or set protected: false to publish the dashboard.',
       )
     }
     if (!looksLikeBcrypt(config.passwordHash)) {
       throw new ConfigError(
-        'zenith.config.js: passwordHash is not a bcrypt hash. It must never be a plaintext ' +
+        'Zenith config: passwordHash is not a bcrypt hash. It must never be a plaintext ' +
           'password. Generate one with `npx zenith hash`.',
       )
     }
     if (!config.jwtSecret) {
       throw new ConfigError(
-        'zenith.config.js: protected is true but jwtSecret is not set. ' +
+        'Zenith config: protected is true but jwtSecret is not set. ' +
           'Generate one with `openssl rand -base64 32`.',
       )
     }
     if (config.jwtSecret.length < MIN_SECRET_LENGTH) {
       throw new ConfigError(
-        `zenith.config.js: jwtSecret is ${config.jwtSecret.length} characters; it must be at ` +
+        `Zenith config: jwtSecret is ${config.jwtSecret.length} characters; it must be at ` +
           `least ${MIN_SECRET_LENGTH}. Generate one with \`openssl rand -base64 32\`.`,
       )
     }
   }
 
   if (config.sessionTtl <= 0) {
-    throw new ConfigError(`zenith.config.js: sessionTtl must be positive, got ${config.sessionTtl}`)
+    throw new ConfigError(`Zenith config: sessionTtl must be positive, got ${config.sessionTtl}`)
   }
 
   // Spelled out field by field rather than spread: the checks above prove

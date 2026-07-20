@@ -12,7 +12,7 @@ import (
 )
 
 // siteColumns is the column list every site query selects, in struct order.
-const siteColumns = `id, name, domain, site_key, api_key, owner_email, created_at`
+const siteColumns = `id, name, domain, site_key, api_key, owner_email, dashboard_path, created_at`
 
 // CreateSite stores a new site.
 func (s *Store) CreateSite(ctx context.Context, site storage.Site) error {
@@ -34,12 +34,12 @@ func (s *Store) CreateSite(ctx context.Context, site storage.Site) error {
 		ownerEmail = site.OwnerEmail
 	}
 
-	const q = `INSERT INTO sites (id, name, domain, site_key, api_key, owner_email, created_at)
-	           VALUES (?, ?, ?, ?, ?, ?, ?)`
+	const q = `INSERT INTO sites (id, name, domain, site_key, api_key, owner_email, dashboard_path, created_at)
+	           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(ctx, q,
 		site.ID, site.Name, site.Domain, site.SiteKey, site.APIKey,
-		ownerEmail, createdAt.Format(timeLayout),
+		ownerEmail, nullable(site.DashboardPath), createdAt.Format(timeLayout),
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -63,10 +63,11 @@ func (s *Store) UpdateSite(ctx context.Context, site storage.Site) error {
 		return errors.New("sqlite: site name and domain are required")
 	}
 
-	const q = `UPDATE sites SET name = ?, domain = ?, owner_email = ? WHERE id = ?`
+	const q = `UPDATE sites SET name = ?, domain = ?, owner_email = ?, dashboard_path = ? WHERE id = ?`
 
 	res, err := s.db.ExecContext(ctx, q,
-		site.Name, site.Domain, nullable(site.OwnerEmail), site.ID)
+		site.Name, site.Domain, nullable(site.OwnerEmail),
+		nullable(site.DashboardPath), site.ID)
 	if err != nil {
 		return fmt.Errorf("sqlite: update site: %w", err)
 	}
@@ -171,24 +172,26 @@ type rowScanner interface {
 // scanSite reads one row selected with siteColumns.
 func scanSite(row rowScanner) (storage.Site, error) {
 	var (
-		site       storage.Site
-		apiKey     sql.NullString
-		ownerEmail sql.NullString
-		createdAt  string
+		site          storage.Site
+		apiKey        sql.NullString
+		ownerEmail    sql.NullString
+		dashboardPath sql.NullString
+		createdAt     string
 	)
 
 	err := row.Scan(
 		&site.ID, &site.Name, &site.Domain, &site.SiteKey,
-		&apiKey, &ownerEmail, &createdAt,
+		&apiKey, &ownerEmail, &dashboardPath, &createdAt,
 	)
 	if err != nil {
 		// Passed through unwrapped: siteWhere needs to recognize ErrNoRows.
 		return storage.Site{}, err
 	}
 
-	// Both are nullable in the schema; empty string is the honest zero value.
+	// All three are nullable in the schema; empty string is the honest zero value.
 	site.APIKey = apiKey.String
 	site.OwnerEmail = ownerEmail.String
+	site.DashboardPath = dashboardPath.String
 
 	site.CreatedAt, err = time.Parse(timeLayout, createdAt)
 	if err != nil {

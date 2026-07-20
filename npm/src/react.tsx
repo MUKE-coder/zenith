@@ -1,8 +1,9 @@
 import { TRACKER_SOURCE, trackerAttributes } from './tracker.js'
 
 /**
- * What `<Analytics />` needs. Your `zenith.config.js` already satisfies it, so
- * hand the whole object over -- only these two fields are ever read.
+ * What `<Analytics />` needs. The `ZENITH_PUBLIC` export in `config/zenith.ts`
+ * is exactly this shape, so hand that over -- these two fields are the only
+ * ones ever read, and both are public.
  */
 export type AnalyticsProps = {
   config: {
@@ -18,14 +19,14 @@ export type AnalyticsProps = {
  * route changes -- are recorded from then on:
  *
  *     import { Analytics } from 'zenith-analytics/next'
- *     import config from '../zenith.config.js'
+ *     import { ZENITH_PUBLIC } from '@/config/zenith'
  *
  *     export default function RootLayout({ children }) {
  *       return (
  *         <html lang="en">
  *           <body>
  *             {children}
- *             <Analytics config={config} />
+ *             <Analytics config={ZENITH_PUBLIC} />
  *           </body>
  *         </html>
  *       )
@@ -39,10 +40,11 @@ export type AnalyticsProps = {
  *    executing a script it parsed. A script inserted later by client-side
  *    React is never run.
  *
- * 2. `zenith.config.js` also holds `apiKey` and `jwtSecret`. Rendered on the
- *    server, the object stays there and only the two public values below reach
- *    the page. Passed into a `'use client'` component, React would serialize
- *    every field it was given into the browser payload -- secrets included.
+ * 2. Rendered on the server, whatever object you pass stays there and only the
+ *    two public values below reach the page. Passed into a `'use client'`
+ *    component, React would serialize every field it was given into the browser
+ *    payload -- which is why `ZENITH_PUBLIC` exists to be passed here, rather
+ *    than the full config that also carries `apiKey` and `jwtSecret`.
  *
  * Nothing here can read a secret even if handed one: it takes `backendUrl` and
  * `siteKey`, and the site key is public by design -- it ships in the page and

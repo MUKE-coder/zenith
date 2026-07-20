@@ -1,8 +1,8 @@
 /**
  * zenith-analytics — cookieless tracking and a domain-native dashboard.
  *
- * Server-side entry point. It reads `zenith.config.js`, which holds secrets,
- * so nothing here may be imported into browser code.
+ * Server-side entry point. It is handed the config, which carries secrets, so
+ * nothing here may be imported into browser code.
  */
 
 export { ConfigError, defaultConfig, resolveConfig } from './config.js'
@@ -25,9 +25,9 @@ export const VERSION = '0.1.0'
  * the browser, and no React dependency here:
  *
  *     import { trackerScriptProps } from 'zenith-analytics'
- *     import config from '../zenith.config.js'
+ *     import { ZENITH_PUBLIC } from '@/config/zenith'
  *
- *     <script {...trackerScriptProps(config)} />
+ *     <script {...trackerScriptProps(ZENITH_PUBLIC)} />
  *
  * Only the public site key is passed. The api key and the signing secret stay
  * on the server, and this function has no way to reach them.

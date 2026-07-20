@@ -183,6 +183,87 @@
   gap: var(--space-4);
 }
 
+/* ── Collapsed sidebar ───────────────────────────────────────────────────── */
+
+/* The toggle sits in the brand row. It only earns its space on hover or focus
+   -- an always-lit control next to the wordmark competes with it. */
+.collapseToggle {
+  margin-left: auto;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-button);
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--duration) var(--ease),
+    background-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.collapseToggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar:hover .collapseToggle,
+.collapseToggle:focus-visible {
+  opacity: 1;
+}
+
+.collapseToggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Icons only. Narrow enough to read as a rail rather than a squeezed sidebar,
+   wide enough that a 18px icon still has air around it. */
+.shellCollapsed {
+  --sidebar-width: 64px;
+}
+
+.sidebarCollapsed {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+/* The wordmark has nowhere to go at this width, so the toggle takes the slot
+   and becomes the way back out. */
+.sidebarCollapsed .brand > :not(.collapseToggle) {
+  display: none;
+}
+
+.sidebarCollapsed .collapseToggle {
+  margin: 0 auto;
+  opacity: 1;
+}
+
+.sidebarCollapsed .navItem,
+.sidebarCollapsed .signOut {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Clipped rather than removed: the label is still the button's accessible
+   name, and a screen reader must not be left with an unlabelled icon. */
+.sidebarCollapsed .navLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .grid2 {
     grid-template-columns: 1fr;
@@ -195,6 +276,37 @@
 @media (max-width: 760px) {
   .shell {
     grid-template-columns: 1fr;
+  }
+
+  /* The strip has no collapsed state to be in, and a preference set on a
+     desktop must not follow someone onto a phone and leave them with an
+     unlabelled row of icons. Everything the collapse did is undone here. */
+  .collapseToggle {
+    display: none;
+  }
+
+  .sidebarCollapsed {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .sidebarCollapsed .brand > :not(.collapseToggle) {
+    display: revert;
+  }
+
+  .sidebarCollapsed .navItem,
+  .sidebarCollapsed .signOut {
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sidebarCollapsed .navLabel {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
   }
 
   /* As a top strip it scrolls away with the page: two things stuck to top: 0

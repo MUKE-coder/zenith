@@ -21,6 +21,7 @@ const (
 	colorAccent   = "#2563eb"
 	colorPositive = "#16a34a"
 	colorNegative = "#dc2626"
+	colorWarning  = "#d97706"
 
 	// Geist will not load in an email client, so the stack degrades to whatever
 	// the reader has. The report is light-only: dark-mode email support is a
@@ -91,20 +92,26 @@ func formatNumber(n int64) string {
 	return strings.Join(append([]string{s}, parts...), ",")
 }
 
-// formatDelta renders a change against the previous month.
-func formatDelta(change *float64) string {
+// formatDelta renders a change against the comparison window.
+//
+// The label is passed in because a month-to-date report compares against the
+// same days of the previous month, not the whole of it.
+func formatDelta(change *float64, against string) string {
+	if against == "" {
+		against = "last month"
+	}
 	if change == nil {
-		// No previous month to compare against. Saying "0%" or "+100%" would
-		// both be untrue.
+		// Nothing to compare against. Saying "0%" or "+100%" would both be
+		// untrue.
 		return "First month"
 	}
 	if *change > 0 {
-		return fmt.Sprintf("▲ %.1f%% vs last month", *change)
+		return fmt.Sprintf("▲ %.1f%% vs %s", *change, against)
 	}
 	if *change < 0 {
-		return fmt.Sprintf("▼ %.1f%% vs last month", -*change)
+		return fmt.Sprintf("▼ %.1f%% vs %s", -*change, against)
 	}
-	return "Unchanged vs last month"
+	return "Unchanged vs " + against
 }
 
 func deltaColor(change *float64) string {
@@ -174,9 +181,9 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
           <tr>
             <td style="padding:0 32px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                {{ template "metric" dict "Label" "Unique visitors" "Value" .Summary.Visitors "Change" .Change.Visitors }}
-                {{ template "metric" dict "Label" "Pageviews" "Value" .Summary.Pageviews "Change" .Change.Pageviews }}
-                {{ template "metric" dict "Label" "Sessions" "Value" .Summary.Sessions "Change" .Change.Sessions }}
+                {{ template "metric" dict "Label" "Unique visitors" "Value" .Summary.Visitors "Change" .Change.Visitors "Against" .CompareLabel }}
+                {{ template "metric" dict "Label" "Pageviews" "Value" .Summary.Pageviews "Change" .Change.Pageviews "Against" .CompareLabel }}
+                {{ template "metric" dict "Label" "Sessions" "Value" .Summary.Sessions "Change" .Change.Sessions "Against" .CompareLabel }}
               </table>
             </td>
           </tr>
@@ -196,6 +203,12 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
           {{ if .TopCountries }}
           <tr><td style="padding:8px 32px 0;">
             {{ template "table" dict "Title" "Top countries" "Rows" .TopCountries "Metric" "visitors" }}
+          </td></tr>
+          {{ end }}
+
+          {{ if .TopDevices }}
+          <tr><td style="padding:8px 32px 0;">
+            {{ template "table" dict "Title" "Devices" "Rows" .TopDevices "Metric" "visitors" }}
           </td></tr>
           {{ end }}
 
@@ -240,7 +253,7 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
       {{ num .Value }}
     </p>
     <p style="margin:4px 0 0;font-size:13px;color:{{ deltaColor .Change }};">
-      {{ delta .Change }}
+      {{ delta .Change .Against }}
     </p>
   </td>
 </tr>

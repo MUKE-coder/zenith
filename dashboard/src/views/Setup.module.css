@@ -17,6 +17,38 @@
   line-height: 1.5;
 }
 
+.error {
+  color: var(--negative);
+}
+
+/* The domain sits against the input so the two read as one URL -- which is
+   what they become in the report's link. */
+.pathRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pathOrigin {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.pathInput {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 560px) {
+  .pathRow {
+    flex-wrap: wrap;
+  }
+}
+
 /* A code block with a copy button. */
 .code {
   position: relative;

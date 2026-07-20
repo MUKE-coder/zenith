@@ -19,24 +19,43 @@ your developer) run.
 
 ```sh
 npm install zenith-analytics
-npx zenith init      # scaffolds zenith.config.js and the dashboard route
+npx zenith init      # scaffolds config/zenith.ts and the dashboard route
 npx zenith hash      # generates a bcrypt hash for the dashboard password
 ```
 
-Fill in the keys (from your Zenith console → **Add site**) in `zenith.config.js`:
+`init` writes `config/zenith.ts` (under `src/` if your routes live there). Set `siteDomain` there
+— **the file is safe to commit**, because the secrets are not in it:
 
-```js
-module.exports = {
-  backendUrl: process.env.ZENITH_URL,       // your Zenith service
-  siteKey:    process.env.ZENITH_SITE_KEY,   // public — ships in the snippet
-  apiKey:     process.env.ZENITH_API_KEY,    // secret — server-side only
+```ts
+import type { ZenithConfig } from 'zenith-analytics'
+
+// Public by design: the site key ships in the snippet on every page.
+export const ZENITH_PUBLIC = {
+  backendUrl: process.env.ZENITH_URL || 'https://zenith.example.com',
+  siteKey: process.env.ZENITH_SITE_KEY || '',
+}
+
+export const ZENITH_CONFIG: Partial<ZenithConfig> = {
+  ...ZENITH_PUBLIC,
+  apiKey: process.env.ZENITH_API_KEY,
   dashboardPath: '/analytics-dashboard',
   protected: true,
-  passwordHash: process.env.ZENITH_PW_HASH,  // from `npx zenith hash`
-  jwtSecret:    process.env.ZENITH_JWT_SECRET,
-  siteDomain:   'example.com',
+  passwordHash: process.env.ZENITH_PW_HASH,
+  jwtSecret: process.env.ZENITH_JWT_SECRET,
+  siteDomain: 'example.com',
 }
 ```
+
+The three secrets come from the deployment environment and nowhere else:
+
+```sh
+ZENITH_API_KEY=zk_...        # reads your analytics — from the console → Add site
+ZENITH_PW_HASH=$2b$10$...    # from `npx zenith hash`
+ZENITH_JWT_SECRET=...        # any long random string; `npx zenith init` prints one
+```
+
+Without them the tracker still runs and the dashboard answers 503 — see
+[the dashboard](#the-domain-native-dashboard-nextjs).
 
 ## Track pageviews
 
@@ -44,14 +63,14 @@ Drop the component into your root layout:
 
 ```tsx
 import { Analytics } from 'zenith-analytics/next'
-import config from '../zenith.config.js'
+import { ZENITH_PUBLIC } from '@/config/zenith'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Analytics config={config} />
+        <Analytics config={ZENITH_PUBLIC} />
       </body>
     </html>
   )
@@ -61,17 +80,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 That's it. Pageviews — including client-side route changes — are recorded from
 then on.
 
-**Render it on the server**, which a layout does by default. Two reasons, one
-rule: the snippet is inlined into the HTML and finds its configuration through
-`document.currentScript`, so a script inserted later by client-side React would
-never run; and `zenith.config.js` also holds `apiKey` and `jwtSecret`, which
-stay on the server as long as the component does. Inside a `'use client'`
-component, React would serialize every field you passed into the browser
-payload.
+**Pass `ZENITH_PUBLIC`, not `ZENITH_CONFIG`.** The component reads only
+`backendUrl` and `siteKey`, so the two objects behave identically here — but
+they fail differently. `ZENITH_CONFIG` carries `apiKey` and `jwtSecret`, and if
+a `'use client'` boundary ever ends up above this component, React serializes
+every field it was handed into the browser payload. Handing it the public half
+means there is no secret in reach for that mistake to leak.
 
-The component itself reads only `backendUrl` and `siteKey`, and the site key is
-public by design — it ships in the page and authorizes writing events, nothing
-more.
+**Render it on the server**, which a layout does by default. The snippet is
+inlined into the HTML and finds its configuration through
+`document.currentScript`, so a script inserted later by client-side React would
+never run.
 
 Not using React, or want the script tag yourself? `trackerScriptProps(config)`
 returns the props, and `trackerScriptTag(config)` returns plain HTML.
@@ -101,23 +120,32 @@ queued and sent once it does, so you don't have to care about ordering.
 
 ```ts
 import { createZenithRoute } from 'zenith-analytics/next'
-import config from '../../../zenith.config.js'
+import { ZENITH_CONFIG, zenithDashboardReady } from '@/config/zenith'
 
-export const { GET, POST } = createZenithRoute(config)
 export const dynamic = 'force-dynamic'
-```
 
-`force-dynamic` matters: without it Next may statically render the route at build time and
-serve every visitor the same cached page — which for a password gate means serving one
-client's dashboard to whoever asks.
+const notConfigured = () =>
+  new Response('Zenith dashboard is not configured on this deployment.', { status: 503 })
+
+const handlers = zenithDashboardReady()
+  ? createZenithRoute(ZENITH_CONFIG)
+  : { GET: async () => notConfigured(), POST: async () => notConfigured() }
+
+export const { GET, POST } = handlers
+```
 
 **Pages Router** — `pages/api/zenith/[[...zenith]].ts`:
 
 ```ts
+import type { NextApiRequest, NextApiResponse } from 'next'
 import { createZenithApiRoute } from 'zenith-analytics/next'
-import config from '../../../zenith.config.js'
+import { ZENITH_CONFIG, zenithDashboardReady } from '@/config/zenith'
 
-export default createZenithApiRoute(config)
+async function notConfigured(_req: NextApiRequest, res: NextApiResponse) {
+  res.status(503).send('Zenith dashboard is not configured on this deployment.')
+}
+
+export default zenithDashboardReady() ? createZenithApiRoute(ZENITH_CONFIG) : notConfigured
 export const config = { api: { bodyParser: false } }
 ```
 
@@ -137,6 +165,31 @@ would consume the stream first, leaving nothing to read.
 
 `npx zenith init` scaffolds whichever router it detects, with the exact wiring.
 
+### Why the route is guarded
+
+`createZenithRoute` validates its config the moment the module loads and throws if a secret is
+missing. That is deliberate — a dashboard that boots without a password hash is a dashboard
+serving your client's analytics to the internet, and failing at startup is the only honest
+answer. But *eager* and *fatal* is the wrong trade on a machine that was never meant to have the
+secrets: a teammate's first `npm run dev`, or a CI build that renders your marketing pages,
+would die on an analytics route nobody asked for.
+
+`zenithDashboardReady()` resolves it by choosing which handler to mount, not by softening the
+validation. With the secrets present the real proxy is constructed and validates exactly as
+before; without them the route never calls `createZenithRoute` at all and answers a plain
+**503**. Tracking is unaffected either way — it needs only the public pair, so pageviews keep
+recording while the dashboard sits offline.
+
+The failure it cannot catch is the interesting one: secrets that are present but *wrong*. A
+malformed hash or a too-short `jwtSecret` passes the guard and then throws out of
+`createZenithRoute`, which is right — that is a real misconfiguration, and it should be loud.
+
+### Why `force-dynamic`
+
+Without it Next may statically render the route at build time and serve every visitor the same
+cached page. For a password gate that means handing one client's dashboard to whoever asks. It
+belongs at the top of the file, above the guard, so it applies to both branches.
+
 Your client visits `yoursite.com/analytics-dashboard`, enters the password, and sees their
 analytics — on their own domain. The proxy reads the data server-side with the secret `apiKey`,
 which never reaches the browser.
@@ -147,12 +200,14 @@ which never reaches the browser.
 npx zenith hash     # prompts, prints a bcrypt hash
 ```
 
-Paste it into `passwordHash`. Never store a plaintext password. The password is verified
-against that hash **in your app** — the Zenith service never learns it. A correct password
-mints a signed, HttpOnly, first-party cookie lasting `sessionTtl` (12 hours by default).
+Set the result as `ZENITH_PW_HASH` in your deployment environment. Never store a plaintext
+password, and note that the hash is still a secret — it belongs in the environment, not in
+`config/zenith.ts`. The password is verified against it **in your app** — the Zenith service
+never learns it. A correct password mints a signed, HttpOnly, first-party cookie lasting
+`sessionTtl` (12 hours by default).
 
-To change it, run `npx zenith hash` again and replace the value. To publish the dashboard with
-no gate at all, set `protected: false`.
+To change it, run `npx zenith hash` again and replace the variable. To publish the dashboard
+with no gate at all, set `protected: false` in the config.
 
 ### Two dashboards, two passwords
 
@@ -162,40 +217,59 @@ Easy to confuse, so worth stating plainly:
 |---|---|---|
 | **Where** | `your-zenith-server/dashboard/` | `theirsite.com/analytics-dashboard` |
 | **Signs in with** | Email + password | A password only |
-| **Set by** | `ZENITH_ADMIN_EMAIL` / `ZENITH_ADMIN_PASSWORD` on the server | `passwordHash` in `zenith.config.js` |
+| **Set by** | `ZENITH_ADMIN_EMAIL` / `ZENITH_ADMIN_PASSWORD` on the server | `ZENITH_PW_HASH` in your app's environment |
 | **Sees** | Every site you manage | Exactly one site, read-only |
 
 This package only configures the second one.
 
-## zenith.config.js
+## config/zenith.ts
 
-Read server-side only. Holds two secrets — keep it out of git (`npx zenith init` adds it to
-`.gitignore`).
+A typed module, read server-side only, that exports two objects and one predicate. It is **safe
+to commit**: it names the environment variables the secrets arrive in and holds none of their
+values. `npx zenith init` writes it — under `src/` when your routes live there, so the `@` alias
+resolves. If your project has no `@` alias, `init` writes a correct relative import instead.
 
-| Field | Required | Default | What it is |
-|---|---|---|---|
-| `backendUrl` | ✓ | — | Your Zenith service, e.g. `https://zenith.example.com` |
-| `siteKey` | ✓ | — | Public key — ships in the page |
-| `apiKey` | ✓ | — | Secret key — reads analytics, server-side only |
-| `siteDomain` | ✓ | — | The site being measured, e.g. `example.com` |
-| `dashboardPath` | — | `/analytics-dashboard` | Where the dashboard mounts |
-| `protected` | — | `true` | Password-gate the dashboard |
-| `passwordHash` | if protected | — | bcrypt hash from `npx zenith hash` |
-| `jwtSecret` | if protected | — | Signs the dashboard cookie, 32+ chars |
-| `sessionTtl` | — | `43200` (12h) | Dashboard session length, in seconds |
+- **`ZENITH_PUBLIC`** — `backendUrl` and `siteKey`. Give this to `<Analytics />`.
+- **`ZENITH_CONFIG`** — the full `Partial<ZenithConfig>`. Give this to the dashboard route.
+- **`zenithDashboardReady()`** — true when the three secrets are present.
 
-Every value is validated at startup, and each failure says how to fix it — a missing hash, a
-plaintext password where a hash belongs, or a `siteKey` and `apiKey` that are the same value
-(easy to transpose, and catastrophic: it would put the secret key in every visitor's page).
+| Field | Source | Required | Default | What it is |
+|---|---|---|---|---|
+| `backendUrl` | `ZENITH_URL` — public | ✓ | — | Your Zenith service, e.g. `https://zenith.example.com` |
+| `siteKey` | `ZENITH_SITE_KEY` — public | ✓ | — | Public key — ships in the page |
+| `siteDomain` | in the file — public | ✓ | — | The site being measured, e.g. `example.com` |
+| `dashboardPath` | in the file — public | — | `/analytics-dashboard` | Where the dashboard mounts |
+| `protected` | in the file — public | — | `true` | Password-gate the dashboard |
+| `apiKey` | `ZENITH_API_KEY` — **secret** | ✓ | — | Reads analytics, server-side only |
+| `passwordHash` | `ZENITH_PW_HASH` — **secret** | if protected | — | bcrypt hash from `npx zenith hash` |
+| `jwtSecret` | `ZENITH_JWT_SECRET` — **secret** | if protected | — | Signs the dashboard cookie, 32+ chars |
+| `sessionTtl` | in the file — public | — | `43200` (12h) | Dashboard session length, in seconds |
+
+The split is the whole design. The public rows describe *where* your analytics live and are
+harmless in a public repo; the three secret rows are the only values that grant anything, and
+they exist solely in your deployment environment. `backendUrl` and `siteKey` read from the
+environment too — they change per deployment — but they fall back to a literal in the file
+because shipping them is fine.
+
+Every value is validated when the proxy is constructed, and each failure says how to fix it — a
+missing hash, a plaintext password where a hash belongs, or a `siteKey` and `apiKey` that are
+the same value (easy to transpose, and catastrophic: it would put the secret key in every
+visitor's page).
 
 ## CLI
 
 ```sh
-npx zenith init     # scaffold zenith.config.js + the dashboard route for your router
+npx zenith init     # scaffold config/zenith.ts + the guarded dashboard route
 npx zenith hash     # generate a bcrypt hash for the dashboard password
 ```
 
-`init` detects App Router vs Pages Router and writes the right wiring for it.
+`init` detects App Router vs Pages Router and writes the right wiring for it, generates a
+`jwtSecret` and prints it for you to put in your environment, and never touches your
+`.gitignore` — the file it writes has nothing to hide. It refuses to clobber an existing
+`config/zenith.ts`, and steps around an existing route; `--force` overwrites both.
+
+`hash` prompts for the password rather than taking it as an argument, so it never lands in your
+shell history or the process list.
 
 ## The two keys
 
@@ -205,20 +279,23 @@ npx zenith hash     # generate a bcrypt hash for the dashboard password
 | `apiKey`  | Secret — server-side only       | Reading that site's analytics |
 
 Treat `siteKey` as readable by anyone (it's in your page source). Keep `apiKey` and `jwtSecret`
-out of client code and out of git.
+out of client code and out of git — which, since `config/zenith.ts` only ever reads them from
+`process.env`, is what happens by default.
 
 ## Entry points
 
-- `zenith-analytics` — server-side: config, the proxy handler, tracker-script helpers. Reads
-  `zenith.config.js`, so **do not** import it into browser code.
+- `zenith-analytics` — server-side: the `ZenithConfig` type, the proxy handler, tracker-script
+  helpers. It is handed your secrets, so **do not** import it into browser code.
 - `zenith-analytics/client` — browser-safe: `track()`. No config, no secrets.
 - `zenith-analytics/next` — `<Analytics />` plus the App Router and Pages Router adapters.
 - `zenith-analytics/react` — `<Analytics />` on its own, for a React app that isn't Next.js.
 
 ## The Zenith service
 
-This package talks to a Zenith service you run. That side is configured with environment
-variables, not with `zenith.config.js` — `ZENITH_JWT_SECRET` (the only required one),
+This package talks to a Zenith service you run. That side is configured through its own
+environment, separate from your app's — and note that `ZENITH_JWT_SECRET` appears in both
+without being the same value: there it belongs to the service, here it signs your dashboard's
+session cookie. The service's variables are `ZENITH_JWT_SECRET` (the only required one),
 `ZENITH_ADMIN_EMAIL` / `ZENITH_ADMIN_PASSWORD`, `ZENITH_PORT`, `ZENITH_DATA_DIR`,
 `ZENITH_TOKEN_TTL`, and the rest. Every variable and its default is tabulated in the
 **[Zenith README](https://github.com/MUKE-coder/zenith#core)**.

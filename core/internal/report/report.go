@@ -36,9 +36,15 @@ type Data struct {
 	TopPages     []storage.Count
 	TopReferrers []storage.Count
 	TopCountries []storage.Count
+	TopDevices   []storage.Count
+
+	// CompareLabel names what Change is measured against, e.g. "last month".
+	// A month-to-date report compares against the same days of the previous
+	// month, and saying "vs last month" there would overstate it.
+	CompareLabel string
 
 	// DashboardURL is where the owner reads the full picture, on their own
-	// domain. Empty if the site has no dashboard configured.
+	// domain. Empty if the site has no dashboard path recorded.
 	DashboardURL string
 }
 
@@ -82,12 +88,69 @@ func rangeFor(period string) (monthRange, error) {
 	return monthRange{start: start, end: start.AddDate(0, 1, 0)}, nil
 }
 
-// Build compiles a site's report for a period.
-func Build(ctx context.Context, events storage.EventStore, site storage.Site, period string) (Data, error) {
+// Window is the stretch of time a report covers.
+//
+// Two shapes exist. The scheduled report covers a whole finished month. A
+// report sent on demand usually wants the month in progress, which is not a
+// month yet -- so the window carries its own label and comparison wording
+// rather than every caller re-deriving them.
+type Window struct {
+	// Period is the "YYYY-MM" this belongs to, and the key report history is
+	// recorded under.
+	Period string
+
+	// Label is the period for a human, e.g. "July 2026" or "July 2026 so far".
+	Label string
+
+	// CompareLabel names what the previous window is, for the delta captions.
+	CompareLabel string
+
+	span monthRange
+}
+
+// FullMonth is the window for a finished month, given as "YYYY-MM".
+func FullMonth(period string) (Window, error) {
 	span, err := rangeFor(period)
+	if err != nil {
+		return Window{}, err
+	}
+	return Window{
+		Period:       period,
+		Label:        span.start.Format("January 2006"),
+		CompareLabel: "last month",
+		span:         span,
+	}, nil
+}
+
+// MonthToDate is the window for the month in progress, up to now.
+//
+// This is what an on-demand send wants: a site added this month has no
+// finished month to report on, and mailing a client a page of zeroes for a
+// month that predates their site is worse than useless.
+func MonthToDate(now time.Time) Window {
+	utc := now.UTC()
+	start := time.Date(utc.Year(), utc.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	return Window{
+		Period:       start.Format("2006-01"),
+		Label:        start.Format("January 2006") + " so far",
+		CompareLabel: "the same days last month",
+		span:         monthRange{start: start, end: utc},
+	}
+}
+
+// Build compiles a site's report for a finished month, given as "YYYY-MM".
+func Build(ctx context.Context, events storage.EventStore, site storage.Site, period string) (Data, error) {
+	window, err := FullMonth(period)
 	if err != nil {
 		return Data{}, err
 	}
+	return BuildWindow(ctx, events, site, window)
+}
+
+// BuildWindow compiles a site's report for an arbitrary window.
+func BuildWindow(ctx context.Context, events storage.EventStore, site storage.Site, w Window) (Data, error) {
+	span := w.span
 
 	query := storage.Query{
 		SiteID:          site.ID,
@@ -102,10 +165,19 @@ func Build(ctx context.Context, events storage.EventStore, site storage.Site, pe
 		return Data{}, fmt.Errorf("report: summary: %w", err)
 	}
 
-	// The month before the one being reported, for the comparison.
+	// The equivalent stretch a month earlier. Shifting both ends by one month
+	// gives the previous whole month for a full-month window, and the same run
+	// of days for a month-to-date one -- comparing the first 20 days of July
+	// against the first 20 of June, rather than against all of June.
 	prior := query
-	prior.To = span.start
 	prior.From = span.start.AddDate(0, -1, 0)
+	prior.To = span.end.AddDate(0, -1, 0)
+
+	// AddDate normalizes overflow, so the 31st of a month following a 30-day
+	// one would spill into the reported month itself. Clamp it back.
+	if limit := prior.From.AddDate(0, 1, 0); prior.To.After(limit) {
+		prior.To = limit
+	}
 
 	previous, err := events.Summary(ctx, prior)
 	if err != nil {
@@ -124,6 +196,10 @@ func Build(ctx context.Context, events storage.EventStore, site storage.Site, pe
 	if err != nil {
 		return Data{}, fmt.Errorf("report: countries: %w", err)
 	}
+	devices, err := events.Breakdown(ctx, query, storage.DimDevice)
+	if err != nil {
+		return Data{}, fmt.Errorf("report: devices: %w", err)
+	}
 
 	// "UG" means nothing to the client this email is written for. The console
 	// resolves codes in the browser with Intl; an email has no JavaScript, so
@@ -135,8 +211,8 @@ func Build(ctx context.Context, events storage.EventStore, site storage.Site, pe
 	return Data{
 		SiteName:    site.Name,
 		SiteDomain:  site.Domain,
-		Period:      period,
-		PeriodLabel: span.start.Format("January 2006"),
+		Period:      w.Period,
+		PeriodLabel: w.Label,
 		Summary:     summary,
 		Previous:    previous,
 		Change: Change{
@@ -147,6 +223,9 @@ func Build(ctx context.Context, events storage.EventStore, site storage.Site, pe
 		TopPages:     pages,
 		TopReferrers: referrers,
 		TopCountries: countries,
+		TopDevices:   devices,
+		CompareLabel: w.CompareLabel,
+		DashboardURL: site.DashboardURL(),
 	}, nil
 }
 

@@ -22,6 +22,13 @@ export type Site = {
   site_key: string
   api_key: string
   owner_email?: string
+
+  /** Where the owner mounted their dashboard, e.g. "/analytics-dashboard". */
+  dashboard_path?: string
+
+  /** That path against the domain. Absent when no path is set. */
+  dashboard_url?: string
+
   created_at: string
 }
 
@@ -126,6 +133,20 @@ export type Report = {
 }
 
 export type ReportsResponse = { reports: Report[] }
+
+export type SendReportResult = {
+  status: string
+  sent_to: string
+
+  /** The month the analytics report covered, as "YYYY-MM". */
+  period?: string
+
+  analytics: boolean
+  seo: boolean
+
+  /** A partial success, e.g. the SEO report skipped for want of an audit. */
+  note?: string
+}
 
 export type AuditStatus = 'queued' | 'running' | 'done' | 'failed'
 

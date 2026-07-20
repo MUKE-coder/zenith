@@ -297,3 +297,136 @@ func TestNumbersAreGrouped(t *testing.T) {
 		t.Error("small numbers are wrong")
 	}
 }
+
+// A report sent on demand covers the month in progress. A site added this
+// month has no finished month, and mailing a client zeroes for a month that
+// predates their site would be worse than sending nothing.
+func TestMonthToDateCoversThisMonth(t *testing.T) {
+	now := time.Date(2026, 7, 20, 15, 0, 0, 0, time.UTC)
+	w := report.MonthToDate(now)
+
+	if w.Period != "2026-07" {
+		t.Errorf("period = %q, want 2026-07", w.Period)
+	}
+	if !strings.Contains(w.Label, "July 2026") || !strings.Contains(w.Label, "so far") {
+		t.Errorf("label = %q, want it to say July 2026 and that it is partial", w.Label)
+	}
+}
+
+// The comparison must be like for like: the first 20 days of July against the
+// first 20 of June, not against the whole of June -- which would make every
+// month-to-date report look like a collapse.
+func TestMonthToDateComparesTheSameRunOfDays(t *testing.T) {
+	june := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	july := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+
+	s := store(t,
+		// Five visitors early in June, then five more late in June that a
+		// month-to-date window ending on the 10th must not count.
+		view(june.AddDate(0, 0, 1), "a", "/"),
+		view(june.AddDate(0, 0, 2), "b", "/"),
+		view(june.AddDate(0, 0, 20), "c", "/"),
+		view(june.AddDate(0, 0, 21), "d", "/"),
+		view(june.AddDate(0, 0, 22), "e", "/"),
+
+		// Two in the first ten days of July.
+		view(july.AddDate(0, 0, 1), "f", "/"),
+		view(july.AddDate(0, 0, 2), "g", "/"),
+	)
+
+	now := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
+	data, err := report.BuildWindow(context.Background(), s, site, report.MonthToDate(now))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	if data.Summary.Visitors != 2 {
+		t.Errorf("visitors = %d, want the 2 so far this month", data.Summary.Visitors)
+	}
+	// June 1-10 had two visitors; the three later in June are outside the
+	// comparable window.
+	if data.Previous.Visitors != 2 {
+		t.Errorf("previous = %d, want the 2 from the same days of June", data.Previous.Visitors)
+	}
+}
+
+// The delta caption has to name what it compared against, or a month-to-date
+// number reads as a full-month one.
+func TestMonthToDateSaysWhatItComparedAgainst(t *testing.T) {
+	s := store(t)
+	now := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
+
+	data, err := report.BuildWindow(context.Background(), s, site, report.MonthToDate(now))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if !strings.Contains(data.CompareLabel, "same days") {
+		t.Errorf("compare label = %q, want it to say it is the same days", data.CompareLabel)
+	}
+}
+
+// The link is the whole point of recording a dashboard path; without one the
+// button must be omitted rather than guessed at.
+func TestDashboardURLOnlyWhenAPathIsRecorded(t *testing.T) {
+	s := store(t)
+
+	withPath := site
+	withPath.DashboardPath = "/zenith"
+
+	data, err := report.Build(context.Background(), s, withPath, "2026-06")
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if data.DashboardURL != "https://acme.com/zenith" {
+		t.Errorf("url = %q, want https://acme.com/zenith", data.DashboardURL)
+	}
+
+	bare, err := report.Build(context.Background(), s, site, "2026-06")
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if bare.DashboardURL != "" {
+		t.Errorf("url = %q, want empty when no path is recorded", bare.DashboardURL)
+	}
+}
+
+// The email a client actually receives. Every section the report can carry has
+// to survive Build and Render together -- unit-testing the data and trusting
+// the template would miss a block guarded on the wrong field.
+func TestRenderedReportCarriesEverySection(t *testing.T) {
+	june := time.Date(2026, 6, 10, 12, 0, 0, 0, time.UTC)
+
+	events := []storage.Event{
+		{SiteID: "site-1", TS: june, Type: "pageview", Path: "/pricing",
+			VisitorHash: "a", Referrer: "news.ycombinator.com", Country: "UG", Device: "mobile"},
+		{SiteID: "site-1", TS: june, Type: "pageview", Path: "/pricing",
+			VisitorHash: "b", Referrer: "google.com", Country: "KE", Device: "desktop"},
+	}
+
+	withDashboard := site
+	withDashboard.DashboardPath = "/zenith"
+
+	data, err := report.Build(context.Background(), store(t, events...), withDashboard, "2026-06")
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	html, err := report.Render(data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	for _, want := range []string{
+		"Top pages", "/pricing",
+		"Top referrers", "news.ycombinator.com",
+		// Resolved, because an email has no JavaScript to do it with.
+		"Top countries", "Uganda",
+		"Devices", "mobile",
+		// The link that had nowhere to point until a path was recorded.
+		"https://acme.com/zenith", "View full analytics",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the email is missing %q", want)
+		}
+	}
+}

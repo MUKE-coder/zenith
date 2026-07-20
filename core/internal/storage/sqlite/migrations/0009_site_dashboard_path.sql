@@ -1,0 +1,15 @@
+-- Where the client reads their analytics, on their own domain.
+--
+-- The monthly report ends with a "view the full dashboard" button, and until
+-- now it had nowhere to point: the dashboard is mounted by the owner's own app
+-- via the npm proxy, and the path they chose is a fact only that app knew.
+-- Assuming the default would have been wrong for anyone who picked another
+-- one, and a broken link in a client-facing email is worse than no link.
+--
+-- Stored as a path rather than a full URL because the origin is already known
+-- -- it is the site's domain -- and two sources for one host would drift.
+--
+-- Nullable, and empty means "no dashboard": the button is simply omitted.
+-- Sites created before this migration have no path recorded, which is honest;
+-- they had no dashboard link in their reports either.
+ALTER TABLE sites ADD COLUMN dashboard_path TEXT;

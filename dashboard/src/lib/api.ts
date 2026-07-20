@@ -11,6 +11,7 @@ import type {
   Realtime,
   Referrers,
   ReportsResponse,
+  SendReportResult,
   Session,
   Settings,
   Site,
@@ -152,7 +153,10 @@ export const api = {
   createSite: (site: { name: string; domain: string; owner_email?: string }) =>
     request<Site>('/api/sites', { method: 'POST', body: site }),
 
-  updateSite: (id: string, changes: { name?: string; domain?: string; owner_email?: string }) =>
+  updateSite: (
+    id: string,
+    changes: { name?: string; domain?: string; owner_email?: string; dashboard_path?: string },
+  ) =>
     request<Site>(`/api/sites/${id}`, { method: 'PATCH', body: changes }),
 
   deleteSite: (id: string) => request<void>(`/api/sites/${id}`, { method: 'DELETE' }),
@@ -174,9 +178,10 @@ export const api = {
   reports: (siteId: string, signal?: AbortSignal) =>
     request<ReportsResponse>(`/api/sites/${siteId}/reports`, { signal }),
 
-  sendTestReport: (siteId: string) =>
-    request<{ status: string; sent_to: string }>(`/api/sites/${siteId}/reports/test`, {
+  sendReport: (siteId: string, what: { analytics: boolean; seo: boolean }) =>
+    request<SendReportResult>(`/api/sites/${siteId}/reports/send`, {
       method: 'POST',
+      body: what,
     }),
 
   summary: (p: StatsParams, signal?: AbortSignal) =>

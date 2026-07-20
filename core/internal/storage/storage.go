@@ -254,7 +254,23 @@ type Site struct {
 	SiteKey    string
 	APIKey     string
 	OwnerEmail string
-	CreatedAt  time.Time
+
+	// DashboardPath is where the owner mounted their dashboard, e.g.
+	// "/analytics-dashboard". Only the owner's app knows it, so it is recorded
+	// here for the report email's link. Empty means no dashboard, and the link
+	// is omitted rather than guessed.
+	DashboardPath string
+
+	CreatedAt time.Time
+}
+
+// DashboardURL is where this site's owner reads their analytics, or "" when no
+// dashboard path is recorded.
+func (s Site) DashboardURL() string {
+	if s.Domain == "" || s.DashboardPath == "" {
+		return ""
+	}
+	return "https://" + s.Domain + s.DashboardPath
 }
 
 // Settings is the deployment's global configuration.

@@ -21,9 +21,9 @@ export type { AnalyticsProps } from './react.js'
  * Mount at `app/<dashboardPath>/[[...zenith]]/route.ts`:
  *
  *     import { createZenithRoute } from 'zenith-analytics/next'
- *     import config from '../../../zenith.config.js'
+ *     import { ZENITH_CONFIG } from '@/config/zenith'
  *
- *     export const { GET, POST } = createZenithRoute(config)
+ *     export const { GET, POST } = createZenithRoute(ZENITH_CONFIG)
  *     export const dynamic = 'force-dynamic'
  *
  * `force-dynamic` matters: without it Next may statically render the route at
@@ -44,9 +44,9 @@ export function createZenithRoute(config: Partial<ZenithConfig>): {
  * Mount at `pages/api/zenith/[[...zenith]].ts`:
  *
  *     import { createZenithApiRoute } from 'zenith-analytics/next'
- *     import config from '../../../zenith.config.js'
+ *     import { ZENITH_CONFIG } from '@/config/zenith'
  *
- *     export default createZenithApiRoute(config)
+ *     export default createZenithApiRoute(ZENITH_CONFIG)
  *     export const config = { api: { bodyParser: false } }
  *
  * and rewrite the dashboard path onto it in `next.config.js`, so the URL the

@@ -361,3 +361,71 @@ func TestApiKeyIsNotASiteKey(t *testing.T) {
 			event.StatusCode)
 	}
 }
+
+// The dashboard path is what the monthly report's link is built from, so a
+// pasted URL, a missing slash and a trailing one all have to land on the same
+// stored value -- otherwise the link is subtly wrong in a client's inbox.
+func TestUpdateSiteNormalizesTheDashboardPath(t *testing.T) {
+	cases := map[string]struct{ sent, want string }{
+		"already clean":    {"/analytics-dashboard", "/analytics-dashboard"},
+		"no leading slash": {"zenith", "/zenith"},
+		"trailing slash":   {"/zenith/", "/zenith"},
+		"a pasted URL":     {"https://acme.com/zenith", "/zenith"},
+		"whitespace":       {"  /zenith  ", "/zenith"},
+		// Empty is meaningful: this site has no dashboard, and the report
+		// omits the link rather than guessing one.
+		"cleared": {"", ""},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			h := newHarness(t)
+			seedSite(t, h)
+			token := h.login(t)
+
+			body, _ := json.Marshal(map[string]string{"dashboard_path": tc.sent})
+			resp := h.patch(t, "/api/sites/site-1", string(body), token)
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status %d, want 200", resp.StatusCode)
+			}
+
+			var got struct {
+				DashboardPath string `json:"dashboard_path"`
+				DashboardURL  string `json:"dashboard_url"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+
+			if got.DashboardPath != tc.want {
+				t.Errorf("dashboard_path = %q, want %q", got.DashboardPath, tc.want)
+			}
+
+			// The resolved URL is what the email actually links to.
+			wantURL := ""
+			if tc.want != "" {
+				wantURL = "https://example.com" + tc.want
+			}
+			if got.DashboardURL != wantURL {
+				t.Errorf("dashboard_url = %q, want %q", got.DashboardURL, wantURL)
+			}
+		})
+	}
+}
+
+// A send with nothing chosen must say so rather than quietly mailing the
+// client something they did not ask for.
+func TestSendReportNeedsAReportChosen(t *testing.T) {
+	h := newHarness(t)
+	seedSite(t, h)
+	token := h.login(t)
+
+	resp := h.post(t, "/api/sites/site-1/reports/send", `{"analytics":false,"seo":false}`, token)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status %d, want 400", resp.StatusCode)
+	}
+}

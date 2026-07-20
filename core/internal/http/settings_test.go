@@ -386,13 +386,13 @@ func TestReportHistorySurfacesFailures(t *testing.T) {
 	}
 }
 
-// Without a Resend key, "send test" must say so rather than fail obscurely.
-func TestTestReportWithoutEmailConfigured(t *testing.T) {
+// Without a Resend key, "send report" must say so rather than fail obscurely.
+func TestSendReportWithoutEmailConfigured(t *testing.T) {
 	h := newHarness(t)
 	seedSite(t, h)
 	token := h.login(t)
 
-	resp := h.post(t, "/api/sites/site-1/reports/test", "", token)
+	resp := h.post(t, "/api/sites/site-1/reports/send", `{"analytics":true}`, token)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusBadRequest {

@@ -11,6 +11,9 @@ type Props = {
   onDeleted: () => void
 }
 
+/** What the npm package mounts the dashboard at unless told otherwise. */
+const DEFAULT_DASHBOARD_PATH = '/analytics-dashboard'
+
 /**
  * Per-site install instructions and keys.
  *
@@ -30,10 +33,23 @@ export function Setup({ site, onDeleted }: Props) {
     )
   }
 
+  return <SiteSetup site={site} onDeleted={onDeleted} />
+}
+
+function SiteSetup({ site, onDeleted }: { site: Site; onDeleted: () => void }) {
   // Derive the backend origin from where the console is served. In the console
   // that is Zenith's own origin, which is exactly the backendUrl a client's
-  // zenith.config.js needs.
+  // config needs.
   const backend = window.location.origin
+
+  // The dashboard path is the client's choice, so every snippet below is
+  // written against whatever they picked rather than the default. It is also
+  // what the monthly report's link is built from, which is why it is stored
+  // rather than left as a fact only their codebase knows.
+  const [path, setPath] = useState(site.dashboard_path || DEFAULT_DASHBOARD_PATH)
+
+  // Leading slash stripped: it is a directory name here, not a URL.
+  const routeDir = (path || DEFAULT_DASHBOARD_PATH).replace(/^\//, '')
 
   const snippet =
     `<script\n` +
@@ -45,30 +61,65 @@ export function Setup({ site, onDeleted }: Props) {
 
   const npmSteps =
     `npm install zenith-analytics\n` +
-    `npx zenith init      # scaffolds zenith.config.js + the dashboard route\n` +
+    `npx zenith init      # scaffolds config/zenith.ts + the dashboard route\n` +
     `npx zenith hash      # a password for the client's dashboard`
 
   const config =
-    `module.exports = {\n` +
-    `  backendUrl: "${backend}",\n` +
-    `  siteKey:    "${site.site_key}",\n` +
-    `  apiKey:     process.env.ZENITH_API_KEY,  // keep this out of the repo\n` +
+    `import type { ZenithConfig } from "zenith-analytics"\n\n` +
+    `// Both values are PUBLIC by design: the site key ships in the snippet on\n` +
+    `// every page, and only authorizes writing events.\n` +
+    `export const ZENITH_PUBLIC = {\n` +
+    `  backendUrl: process.env.ZENITH_URL || "${backend}",\n` +
+    `  siteKey: process.env.ZENITH_SITE_KEY || "${site.site_key}",\n` +
+    `}\n\n` +
+    `// The secrets come only from the environment, never this file.\n` +
+    `export const ZENITH_CONFIG: Partial<ZenithConfig> = {\n` +
+    `  ...ZENITH_PUBLIC,\n` +
+    `  apiKey: process.env.ZENITH_API_KEY,\n` +
+    `  dashboardPath: "${path || DEFAULT_DASHBOARD_PATH}",\n` +
+    `  protected: true,\n` +
+    `  passwordHash: process.env.ZENITH_PW_HASH,\n` +
+    `  jwtSecret: process.env.ZENITH_JWT_SECRET,\n` +
     `  siteDomain: "${site.domain}",\n` +
+    `}\n\n` +
+    `// createZenithRoute validates at module load and throws on missing\n` +
+    `// secrets — right for production, fatal for a local build without them.\n` +
+    `export function zenithDashboardReady(): boolean {\n` +
+    `  return Boolean(\n` +
+    `    ZENITH_CONFIG.apiKey && ZENITH_CONFIG.passwordHash && ZENITH_CONFIG.jwtSecret\n` +
+    `  )\n` +
     `}`
 
   const layout =
     `import { Analytics } from "zenith-analytics/next"\n` +
-    `import config from "../zenith.config.js"\n\n` +
+    `import { ZENITH_PUBLIC } from "@/config/zenith"\n\n` +
     `export default function RootLayout({ children }) {\n` +
     `  return (\n` +
     `    <html lang="en">\n` +
     `      <body>\n` +
     `        {children}\n` +
-    `        <Analytics config={config} />\n` +
+    `        <Analytics config={ZENITH_PUBLIC} />\n` +
     `      </body>\n` +
     `    </html>\n` +
     `  )\n` +
     `}`
+
+  const route =
+    `import { createZenithRoute } from "zenith-analytics/next"\n\n` +
+    `import { ZENITH_CONFIG, zenithDashboardReady } from "@/config/zenith"\n\n` +
+    `// Without this, Next could statically render the route at build time and\n` +
+    `// serve every visitor the same cached page — fatal for a password gate.\n` +
+    `export const dynamic = "force-dynamic"\n\n` +
+    `const notConfigured = () =>\n` +
+    `  new Response("Zenith dashboard is not configured on this deployment.", {\n` +
+    `    status: 503,\n` +
+    `  })\n\n` +
+    `// Secrets present → the real dashboard proxy. Absent (local dev, CI) → a\n` +
+    `// plain 503 instead of createZenithRoute's intentional startup throw.\n` +
+    `const handlers = zenithDashboardReady()\n` +
+    `  ? createZenithRoute(ZENITH_CONFIG)\n` +
+    `  : { GET: async () => notConfigured(), POST: async () => notConfigured() }\n\n` +
+    `export const { GET, POST } = handlers`
 
   return (
     <div className={styles.stack}>
@@ -79,18 +130,31 @@ export function Setup({ site, onDeleted }: Props) {
             dashboard in one go.
           </p>
           <CodeBlock code={npmSteps} />
+
           <p className={styles.stepLabel}>
-            Then fill in <code>zenith.config.js</code>:
+            Then <code>config/zenith.ts</code>. This file holds no secrets, so it is safe to
+            commit — the two values in <code>ZENITH_PUBLIC</code> are public by design, and
+            everything that isn&apos;t comes from the environment.
           </p>
           <CodeBlock code={config} />
+
           <p className={styles.stepLabel}>
-            Finally, drop the tracker into your root layout. Leave it there — a layout
-            renders on the server, which keeps the snippet inline where the browser runs
-            it, and keeps this config's secrets out of the browser.
+            Drop the tracker into your root layout, passing only the public half. Leave it
+            there — a layout renders on the server, which keeps the snippet inline where the
+            browser runs it.
           </p>
           <CodeBlock code={layout} />
+
+          <p className={styles.stepLabel}>
+            Finally, create the dashboard route at{' '}
+            <code>app/{routeDir}/[[...zenith]]/route.ts</code>. The folder name has to match{' '}
+            <code>dashboardPath</code> above, or the proxy answers on a path nothing requests.
+          </p>
+          <CodeBlock code={route} />
         </div>
       </Panel>
+
+      <DashboardPathPanel site={site} path={path} onChange={setPath} />
 
       <Panel title="Or drop in the snippet">
         <div className={styles.step}>
@@ -166,6 +230,81 @@ function CopyButton({ value, className }: { value: string; className?: string })
     <button type="button" className={className ?? styles.reveal} onClick={copy}>
       {copied ? 'Copied' : 'Copy'}
     </button>
+  )
+}
+
+/**
+ * Where the client mounted their dashboard.
+ *
+ * Zenith cannot discover this: the dashboard is a route in the client's own
+ * app, and the path they chose is a fact only their codebase knows. Recording
+ * it here is what lets the monthly report end with a working link instead of a
+ * guess -- and a broken link in a client-facing email is worse than none.
+ */
+function DashboardPathPanel({
+  site,
+  path,
+  onChange,
+}: {
+  site: Site
+  path: string
+  onChange: (path: string) => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<string>()
+  const [failed, setFailed] = useState(false)
+
+  const saved = site.dashboard_path ?? ''
+  const dirty = path.trim() !== saved
+
+  async function save() {
+    setSaving(true)
+    setMessage(undefined)
+    setFailed(false)
+
+    try {
+      const updated = await api.updateSite(site.id, { dashboard_path: path.trim() })
+      onChange(updated.dashboard_path ?? '')
+      setMessage(updated.dashboard_url ? `Reports will link to ${updated.dashboard_url}` : 'Saved.')
+    } catch (err: unknown) {
+      setFailed(true)
+      setMessage(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Panel title="Client dashboard">
+      <p className={styles.stepLabel}>
+        The path you gave <code>dashboardPath</code> in the config above. Saving it here is
+        what puts a working &ldquo;view full analytics&rdquo; link at the end of{' '}
+        {site.name}&apos;s monthly report. Leave it empty if this site has no dashboard — the
+        report then omits the link rather than guessing at one.
+      </p>
+
+      <div className={styles.pathRow}>
+        <span className={styles.pathOrigin}>{site.domain}</span>
+        <input
+          className={`input ${styles.pathInput}`}
+          value={path}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={DEFAULT_DASHBOARD_PATH}
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={`Dashboard path for ${site.name}`}
+        />
+        <button type="button" className="button-primary" onClick={save} disabled={saving || !dirty}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+
+      {message && (
+        <p className={`${styles.stepLabel} ${failed ? styles.error : ''}`} role="status">
+          {message}
+        </p>
+      )}
+    </Panel>
   )
 }
 

@@ -54,7 +54,8 @@ export function Settings({ onUnauthorized }: Props) {
           <>
             <p className={styles.hint} style={{ marginTop: 0, marginBottom: 'var(--space-4)' }}>
               Each site's owner gets last month's report on the 1st. Clear an address to stop
-              sending.
+              sending. Sending by hand goes out now and covers the month so far, so a site added
+              this month still has something to show — it does not replace the scheduled one.
             </p>
             {sites.data.sites.map((site) => (
               <SiteReportRow
@@ -187,6 +188,11 @@ function SiteReportRow({ site, emailReady, onUnauthorized }: SiteReportRowProps)
   const [message, setMessage] = useState<string>()
   const [failed, setFailed] = useState(false)
 
+  // Analytics is what the button used to do, so it stays the default. SEO is
+  // opt-in because it needs an audit to have been run first.
+  const [analytics, setAnalytics] = useState(true)
+  const [seo, setSeo] = useState(false)
+
   const reports = useAsync((signal) => api.reports(site.id, signal), [site.id], {
     onUnauthorized,
   })
@@ -209,14 +215,18 @@ function SiteReportRow({ site, emailReady, onUnauthorized }: SiteReportRowProps)
     }
   }
 
-  async function sendTest() {
+  async function send() {
     setSending(true)
     setMessage(undefined)
     setFailed(false)
 
     try {
-      const res = await api.sendTestReport(site.id)
-      setMessage(`Sent to ${res.sent_to}.`)
+      const res = await api.sendReport(site.id, { analytics, seo })
+
+      const sent = [res.analytics && 'analytics', res.seo && 'SEO'].filter(Boolean).join(' and ')
+      // The note carries a partial success -- an SEO report skipped because
+      // the site has never been audited. Saying only "sent" would hide it.
+      setMessage(`Sent ${sent} to ${res.sent_to}.${res.note ? ` ${res.note}` : ''}`)
     } catch (err: unknown) {
       setFailed(true)
       // The server's message names the real problem ("domain is not verified").
@@ -268,21 +278,42 @@ function SiteReportRow({ site, emailReady, onUnauthorized }: SiteReportRowProps)
             {saving ? 'Saving…' : 'Save'}
           </button>
         ) : (
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={sendTest}
-            disabled={sending || !emailReady || !email.trim()}
-            title={
-              !emailReady
-                ? 'Add a Resend API key first'
-                : !email.trim()
-                  ? 'Add an owner email first'
-                  : 'Send this month’s report now'
-            }
-          >
-            {sending ? 'Sending…' : 'Send test'}
-          </button>
+          <div className={styles.sendGroup}>
+            {/* Which reports go out. Both are real sends to the client, so the
+                choice is in front of the button rather than behind a menu. */}
+            <div className={styles.sendPick}>
+              <label className={styles.check}>
+                <input
+                  type="checkbox"
+                  checked={analytics}
+                  onChange={(e) => setAnalytics(e.target.checked)}
+                />
+                Analytics
+              </label>
+              <label className={styles.check}>
+                <input type="checkbox" checked={seo} onChange={(e) => setSeo(e.target.checked)} />
+                SEO
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={send}
+              disabled={sending || !emailReady || !email.trim() || (!analytics && !seo)}
+              title={
+                !emailReady
+                  ? 'Add a Resend API key first'
+                  : !email.trim()
+                    ? 'Add an owner email first'
+                    : !analytics && !seo
+                      ? 'Choose at least one report'
+                      : 'Send to the client now'
+              }
+            >
+              {sending ? 'Sending…' : 'Send report'}
+            </button>
+          </div>
         )}
       </div>
     </div>

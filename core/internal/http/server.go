@@ -126,7 +126,7 @@ func (s *Server) Routes() http.Handler {
 		r.Patch("/{id}", s.handleUpdateSite)
 		r.Delete("/{id}", s.handleDeleteSite)
 		r.Get("/{id}/reports", s.handleSiteReports)
-		r.Post("/{id}/reports/test", s.handleTestReport)
+		r.Post("/{id}/reports/send", s.handleSendReport)
 	})
 
 	// SEO audits. Running one is the developer's to trigger; reading the

@@ -10,6 +10,7 @@ import {
   IconSeo,
   IconSettings,
   IconSetup,
+  IconSidebar,
   IconSignOut,
   ZenithMark,
 } from './components/icons'
@@ -36,6 +37,15 @@ type Tab = 'overview' | 'events' | 'audits' | 'setup' | 'settings'
 
 /** Remembers the site across reloads, so a refresh does not lose your place. */
 const SITE_KEY = 'zenith.site'
+
+/**
+ * Remembers whether the sidebar is collapsed.
+ *
+ * Stored even in the embedded dashboard, where auth deliberately avoids
+ * localStorage: a session token there belongs to the owner's first-party
+ * cookie, but which way someone likes their sidebar is only ever a preference.
+ */
+const SIDEBAR_KEY = 'zenith.sidebar'
 
 type NavItem = { tab: Tab; label: string; icon: ReactNode; developerOnly?: boolean }
 
@@ -80,6 +90,7 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
   const [siteId, setSiteId] = useState<string | undefined>(
     () => ownSiteId ?? localStorage.getItem(SITE_KEY) ?? undefined,
   )
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1')
   const [addingSite, setAddingSite] = useState(false)
   // A site that has been created but is not in the fetched list yet.
   const [pendingSiteId, setPendingSiteId] = useState<string>()
@@ -134,9 +145,17 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
     setTab('setup')
   }
 
+  function toggleSidebar() {
+    setCollapsed((was) => {
+      const next = !was
+      localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0')
+      return next
+    })
+  }
+
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+    <div className={`${styles.shell} ${collapsed ? styles.shellCollapsed : ''}`}>
+      <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
         {/* Embedded, this is a page of the owner's site and it says so. The
             console is Zenith's, and says that. */}
         <div className={styles.brand}>
@@ -146,6 +165,20 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
             <ZenithMark size={24} />
           )}
           <span className={styles.brandName}>{embed?.siteDomain ?? 'Zenith'}</span>
+
+          {/* Below the mobile breakpoint the sidebar is a strip, which has no
+              collapsed state to toggle into -- so the control is hidden there
+              rather than disabled. */}
+          <button
+            type="button"
+            className={styles.collapseToggle}
+            onClick={toggleSidebar}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <IconSidebar />
+          </button>
         </div>
 
         <nav className={styles.nav} aria-label="Sections">
@@ -156,19 +189,28 @@ function Console({ isOwner, ownSiteId, onSignOut, onUnauthorized }: ConsoleProps
               className={`${styles.navItem} ${tab === item.tab ? styles.navItemActive : ''}`}
               aria-current={tab === item.tab ? 'page' : undefined}
               onClick={() => setTab(item.tab)}
+              title={collapsed ? item.label : undefined}
             >
               <span className={styles.navIcon}>{item.icon}</span>
-              {item.label}
+              {/* Hidden by CSS rather than unmounted when collapsed, so the
+                  button keeps its accessible name and the mobile strip can
+                  bring the labels back without JavaScript. */}
+              <span className={styles.navLabel}>{item.label}</span>
             </button>
           ))}
         </nav>
 
         <div className={styles.sidebarFoot}>
-          <button type="button" className={styles.signOut} onClick={() => void onSignOut()}>
+          <button
+            type="button"
+            className={styles.signOut}
+            onClick={() => void onSignOut()}
+            title={collapsed ? 'Sign out' : undefined}
+          >
             <span className={styles.navIcon}>
               <IconSignOut />
             </span>
-            Sign out
+            <span className={styles.navLabel}>Sign out</span>
           </button>
         </div>
       </aside>

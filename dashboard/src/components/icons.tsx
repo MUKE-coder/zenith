@@ -154,6 +154,20 @@ export function IconChevronDown({ className }: { className?: string }) {
   )
 }
 
+/**
+ * The sidebar collapse control: a panel with its divider, and an arrow through
+ * it. One glyph for both directions -- the CSS flips it -- because two mirrored
+ * icons would be two things to keep in step for no gain.
+ */
+export function IconSidebar({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </Svg>
+  )
+}
+
 /* ── Empty states ────────────────────────────────────────────────────────── */
 
 export function IconGlobe({ className }: { className?: string }) {

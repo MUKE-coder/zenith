@@ -217,7 +217,7 @@ func (r *Reporter) sendOne(
 	return nil
 }
 
-// deliver builds and sends, without recording.
+// deliver builds and sends a finished month's report, without recording.
 func (r *Reporter) deliver(
 	ctx context.Context,
 	sender email.Sender,
@@ -225,7 +225,22 @@ func (r *Reporter) deliver(
 	site storage.Site,
 	period string,
 ) error {
-	data, err := report.Build(ctx, r.events, site, period)
+	window, err := report.FullMonth(period)
+	if err != nil {
+		return err
+	}
+	return r.deliverWindow(ctx, sender, settings, site, window)
+}
+
+// deliverWindow builds and sends the analytics report for a window.
+func (r *Reporter) deliverWindow(
+	ctx context.Context,
+	sender email.Sender,
+	settings storage.Settings,
+	site storage.Site,
+	window report.Window,
+) error {
+	data, err := report.BuildWindow(ctx, r.events, site, window)
 	if err != nil {
 		return err
 	}
@@ -243,36 +258,128 @@ func (r *Reporter) deliver(
 	})
 }
 
-// SendTest sends a site's report right now, to its owner.
-//
-// It deliberately does not touch report_history. A test send that recorded
-// itself would mark the month as done, and the client's real report would
-// never go out -- the "preview" would have silently replaced the thing it was
-// previewing.
-func (r *Reporter) SendTest(ctx context.Context, siteID string) error {
-	settings, err := r.app.Settings(ctx)
+// deliverSEO builds and sends the SEO report from the site's latest audit.
+func (r *Reporter) deliverSEO(
+	ctx context.Context,
+	sender email.Sender,
+	settings storage.Settings,
+	site storage.Site,
+) error {
+	data, err := report.BuildSEO(ctx, r.app, site)
 	if err != nil {
 		return err
 	}
+
+	html, err := report.RenderSEO(data)
+	if err != nil {
+		return err
+	}
+
+	return sender.Send(ctx, email.Message{
+		From:    settings.MailFrom,
+		To:      site.OwnerEmail,
+		Subject: report.SEOSubject(data),
+		HTML:    html,
+	})
+}
+
+// SendOptions selects what an on-demand send includes.
+type SendOptions struct {
+	Analytics bool
+	SEO       bool
+}
+
+// SendResult says what actually went out.
+type SendResult struct {
+	SentTo string
+
+	// Period is the month the analytics report covered, as "YYYY-MM".
+	Period string
+
+	Analytics bool
+	SEO       bool
+
+	// SEONote explains why the SEO report was left out when it was asked for
+	// and could not be sent -- almost always "no audit has been run yet".
+	// Empty when nothing was skipped.
+	SEONote string
+}
+
+// ErrNothingSelected means a send was asked for with no report chosen.
+var ErrNothingSelected = errors.New("choose at least one report to send")
+
+// SendNow sends a site's reports immediately, to its owner.
+//
+// The analytics report covers the month in progress rather than the last
+// finished one. A developer clicking "send report" wants to show a client what
+// their site is doing, and a site added this month has no finished month --
+// mailing them a page of zeroes for a month that predates the site would be
+// worse than not sending at all.
+//
+// It deliberately does not touch report_history. Recording it would mark the
+// month as done, and when the 1st came around the scheduler would skip the
+// real report -- the manual send would have silently replaced the thing it was
+// meant to preview.
+func (r *Reporter) SendNow(ctx context.Context, siteID string, opts SendOptions) (SendResult, error) {
+	if !opts.Analytics && !opts.SEO {
+		return SendResult{}, ErrNothingSelected
+	}
+
+	settings, err := r.app.Settings(ctx)
+	if err != nil {
+		return SendResult{}, err
+	}
 	if !settings.Configured() {
-		return email.ErrNotConfigured
+		return SendResult{}, email.ErrNotConfigured
 	}
 
 	site, err := r.app.SiteByID(ctx, siteID)
 	if err != nil {
-		return err
+		return SendResult{}, err
 	}
 	if site.OwnerEmail == "" {
-		return errors.New("this site has no owner email set")
+		return SendResult{}, errors.New("this site has no owner email set")
 	}
 
 	sender, err := r.senderFor(settings)
 	if err != nil {
-		return err
+		return SendResult{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 
-	return r.deliver(ctx, sender, settings, site, report.Period(r.now()))
+	result := SendResult{SentTo: site.OwnerEmail}
+
+	if opts.Analytics {
+		window := report.MonthToDate(r.now())
+		if err := r.deliverWindow(ctx, sender, settings, site, window); err != nil {
+			return SendResult{}, err
+		}
+		result.Analytics = true
+		result.Period = window.Period
+		r.log.Info("analytics report sent on demand", "site_id", site.ID, "period", window.Period)
+	}
+
+	if opts.SEO {
+		err := r.deliverSEO(ctx, sender, settings, site)
+		switch {
+		case errors.Is(err, report.ErrNoAudit):
+			// Not a failure. The developer has to run an audit first, and
+			// saying so beats a 502 that reads like the mail broke -- but if
+			// the SEO report was the only thing asked for, there is nothing to
+			// report as sent.
+			if !opts.Analytics {
+				return SendResult{}, err
+			}
+			result.SEONote = "No completed audit yet, so the SEO report was skipped."
+		case err != nil:
+			return SendResult{}, err
+		default:
+			result.SEO = true
+			r.log.Info("seo report sent on demand", "site_id", site.ID)
+		}
+	}
+
+	return result, nil
 }

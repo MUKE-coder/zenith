@@ -85,6 +85,35 @@
   max-width: 100%;
 }
 
+/* The report picker sits beside its button, so what is about to be sent is
+   readable in the same glance as the thing that sends it. */
+.sendGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sendPick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.check input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .history {
   display: flex;
   flex-direction: column;
@@ -108,5 +137,12 @@
 
   .ownerInput {
     width: 100%;
+  }
+
+  /* Stacked, the picker reads as a list above its button rather than being
+     squeezed onto one line with it. */
+  .ownerEmail,
+  .sendGroup {
+    flex-wrap: wrap;
   }
 }

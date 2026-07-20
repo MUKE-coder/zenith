@@ -302,9 +302,9 @@ func TestOneFailureDoesNotStopTheRest(t *testing.T) {
 	}
 }
 
-// A test send is a preview. If it recorded itself, the month would be marked
-// done and the client's real report would never go out.
-func TestTestSendDoesNotRecordHistory(t *testing.T) {
+// An on-demand send is a preview. If it recorded itself, the month would be
+// marked done and the client's real report would never go out.
+func TestSendNowDoesNotRecordHistory(t *testing.T) {
 	f := newFixture(t)
 	f.configure(t)
 	f.addSite(t, "site-1", "owner@client.com")
@@ -312,8 +312,8 @@ func TestTestSendDoesNotRecordHistory(t *testing.T) {
 
 	ctx := context.Background()
 
-	if err := f.reporter.SendTest(ctx, "site-1"); err != nil {
-		t.Fatalf("send test: %v", err)
+	if _, err := f.reporter.SendNow(ctx, "site-1", scheduler.SendOptions{Analytics: true}); err != nil {
+		t.Fatalf("send now: %v", err)
 	}
 	if f.mail.count() != 1 {
 		t.Fatalf("delivered %d emails, want 1", f.mail.count())
@@ -327,25 +327,26 @@ func TestTestSendDoesNotRecordHistory(t *testing.T) {
 	// ...so the real one still goes out.
 	sent, _ := f.reporter.SendMonthly(ctx)
 	if sent != 1 {
-		t.Errorf("monthly sent %d after a test send, want 1", sent)
+		t.Errorf("monthly sent %d after an on-demand send, want 1", sent)
 	}
 }
 
-func TestTestSendNeedsAnOwnerEmail(t *testing.T) {
+func TestSendNowNeedsAnOwnerEmail(t *testing.T) {
 	f := newFixture(t)
 	f.configure(t)
 	f.addSite(t, "site-1", "")
 
-	if err := f.reporter.SendTest(context.Background(), "site-1"); err == nil {
-		t.Error("sent a test report to a site with no owner")
+	_, err := f.reporter.SendNow(context.Background(), "site-1", scheduler.SendOptions{Analytics: true})
+	if err == nil {
+		t.Error("sent a report to a site with no owner")
 	}
 }
 
-func TestTestSendNeedsEmailConfigured(t *testing.T) {
+func TestSendNowNeedsEmailConfigured(t *testing.T) {
 	f := newFixture(t)
 	f.addSite(t, "site-1", "owner@client.com")
 
-	err := f.reporter.SendTest(context.Background(), "site-1")
+	_, err := f.reporter.SendNow(context.Background(), "site-1", scheduler.SendOptions{Analytics: true})
 	if !errors.Is(err, email.ErrNotConfigured) {
 		t.Errorf("got %v, want ErrNotConfigured", err)
 	}

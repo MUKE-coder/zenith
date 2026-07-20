@@ -118,11 +118,11 @@ func TestNoSecretReachesTheLog(t *testing.T) {
 		`{"email":"nobody@example.com","password":"`+secretPassword+`"}`, "").Body.Close()
 	h.put(t, "/api/settings", // store the Resend key
 		`{"resend_api_key":"`+secretResend+`","mail_from":"a@example.com"}`, token).Body.Close()
-	h.get(t, "/api/settings", token).Body.Close()                       // read it back
-	h.get(t, "/api/sites", token).Body.Close()                          // lists api keys
-	h.apiKeyGet(t, "/api/stats/summary", secretAPIKey).Body.Close()     // authenticate with one
-	h.apiKeyGet(t, "/api/stats/summary", "zk_sec_wrong").Body.Close()   // and fail with one
-	h.post(t, "/api/sites/site-1/reports/test", "", token).Body.Close() // try to send email
+	h.get(t, "/api/settings", token).Body.Close()                                         // read it back
+	h.get(t, "/api/sites", token).Body.Close()                                            // lists api keys
+	h.apiKeyGet(t, "/api/stats/summary", secretAPIKey).Body.Close()                       // authenticate with one
+	h.apiKeyGet(t, "/api/stats/summary", "zk_sec_wrong").Body.Close()                     // and fail with one
+	h.post(t, "/api/sites/site-1/reports/send", `{"analytics":true}`, token).Body.Close() // try to send email
 	h.post(t, "/api/auth/logout", "", token).Body.Close()
 
 	logged := sink.String()
