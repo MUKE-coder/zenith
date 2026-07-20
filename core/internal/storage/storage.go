@@ -139,6 +139,32 @@ type Summary struct {
 	Pageviews int64
 	Visitors  int64
 	Sessions  int64
+
+	// BounceRate is the share of sessions that saw one page and left, 0 to 1.
+	//
+	// A rate rather than a count, because the count means nothing without the
+	// denominator and every consumer would divide by Sessions anyway.
+	BounceRate float64
+
+	// AvgDuration is the mean session length in seconds.
+	//
+	// Measured from a session's first event to its last, which means a
+	// one-page session is zero seconds long: nothing after the arrival marks
+	// how long the reader stayed. That is the same floor every analytics tool
+	// without an unload beacon has, and it makes the average an understatement
+	// rather than a guess.
+	AvgDuration float64
+}
+
+// ViewsPerVisit is how many pages an average session saw.
+//
+// Derived rather than stored: it is Pageviews over Sessions, and a second
+// source for the same number is a second thing to keep in step.
+func (s Summary) ViewsPerVisit() float64 {
+	if s.Sessions == 0 {
+		return 0
+	}
+	return float64(s.Pageviews) / float64(s.Sessions)
 }
 
 // Bucket is one point on the timeseries chart.

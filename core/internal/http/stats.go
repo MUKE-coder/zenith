@@ -117,6 +117,13 @@ type summaryResponse struct {
 	Visitors  int64 `json:"visitors"`
 	Sessions  int64 `json:"sessions"`
 
+	// BounceRate is 0 to 1. AvgDuration is seconds. ViewsPerVisit is derived
+	// from the two counts above and sent rather than left to each client to
+	// divide, so every consumer rounds it the same way.
+	BounceRate    float64 `json:"bounce_rate"`
+	AvgDuration   float64 `json:"avg_duration"`
+	ViewsPerVisit float64 `json:"views_per_visit"`
+
 	// Previous and Change are present only when ?compare=true.
 	Previous *summaryNumbers `json:"previous,omitempty"`
 	Change   *summaryChange  `json:"change,omitempty"`
@@ -126,6 +133,10 @@ type summaryNumbers struct {
 	Pageviews int64 `json:"pageviews"`
 	Visitors  int64 `json:"visitors"`
 	Sessions  int64 `json:"sessions"`
+
+	BounceRate    float64 `json:"bounce_rate"`
+	AvgDuration   float64 `json:"avg_duration"`
+	ViewsPerVisit float64 `json:"views_per_visit"`
 }
 
 // summaryChange is the percent change against the previous period.
@@ -137,6 +148,13 @@ type summaryChange struct {
 	Pageviews *float64 `json:"pageviews"`
 	Visitors  *float64 `json:"visitors"`
 	Sessions  *float64 `json:"sessions"`
+
+	// A rising bounce rate is a worse month, not a better one. The sign here
+	// is the arithmetic one; deciding that up is bad belongs to whatever
+	// paints the arrow, and the dashboard does.
+	BounceRate    *float64 `json:"bounce_rate"`
+	AvgDuration   *float64 `json:"avg_duration"`
+	ViewsPerVisit *float64 `json:"views_per_visit"`
 }
 
 // handleSummary returns the headline numbers for a period.
@@ -154,9 +172,12 @@ func (s *Server) handleSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := summaryResponse{
-		Pageviews: current.Pageviews,
-		Visitors:  current.Visitors,
-		Sessions:  current.Sessions,
+		Pageviews:     current.Pageviews,
+		Visitors:      current.Visitors,
+		Sessions:      current.Sessions,
+		BounceRate:    current.BounceRate,
+		AvgDuration:   current.AvgDuration,
+		ViewsPerVisit: current.ViewsPerVisit(),
 	}
 
 	if wantsCompare(r) {
@@ -168,14 +189,20 @@ func (s *Server) handleSummary(w http.ResponseWriter, r *http.Request) {
 		}
 
 		out.Previous = &summaryNumbers{
-			Pageviews: prior.Pageviews,
-			Visitors:  prior.Visitors,
-			Sessions:  prior.Sessions,
+			Pageviews:     prior.Pageviews,
+			Visitors:      prior.Visitors,
+			Sessions:      prior.Sessions,
+			BounceRate:    prior.BounceRate,
+			AvgDuration:   prior.AvgDuration,
+			ViewsPerVisit: prior.ViewsPerVisit(),
 		}
 		out.Change = &summaryChange{
-			Pageviews: percentChange(prior.Pageviews, current.Pageviews),
-			Visitors:  percentChange(prior.Visitors, current.Visitors),
-			Sessions:  percentChange(prior.Sessions, current.Sessions),
+			Pageviews:     percentChange(prior.Pageviews, current.Pageviews),
+			Visitors:      percentChange(prior.Visitors, current.Visitors),
+			Sessions:      percentChange(prior.Sessions, current.Sessions),
+			BounceRate:    percentChangeFloat(prior.BounceRate, current.BounceRate),
+			AvgDuration:   percentChangeFloat(prior.AvgDuration, current.AvgDuration),
+			ViewsPerVisit: percentChangeFloat(prior.ViewsPerVisit(), current.ViewsPerVisit()),
 		}
 	}
 
@@ -195,6 +222,18 @@ func percentChange(before, now int64) *float64 {
 
 	// One decimal is all a delta chip shows; more would imply precision the
 	// number does not have.
+	rounded := float64(int64(change*10)) / 10
+	return &rounded
+}
+
+// percentChangeFloat is percentChange for the rates and averages, which are
+// not whole numbers and cannot reuse the integer version.
+func percentChangeFloat(before, now float64) *float64 {
+	if before == 0 {
+		return nil
+	}
+
+	change := (now - before) / before * 100
 	rounded := float64(int64(change*10)) / 10
 	return &rounded
 }

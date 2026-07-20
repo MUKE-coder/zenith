@@ -34,17 +34,21 @@ export type Site = {
 
 export type SitesResponse = { sites: Site[] }
 
-export type Summary = {
-  pageviews: number
-  visitors: number
-  sessions: number
-  previous?: { pageviews: number; visitors: number; sessions: number }
+/** Every headline metric, so the cards can be driven by one list. */
+export type SummaryMetric =
+  | 'visitors'
+  | 'pageviews'
+  | 'sessions'
+  | 'views_per_visit'
+  | 'bounce_rate'
+  | 'avg_duration'
+
+export type SummaryNumbers = Record<SummaryMetric, number>
+
+export type Summary = SummaryNumbers & {
+  previous?: SummaryNumbers
   /** Null per metric when the previous period was zero: growth from nothing has no percentage. */
-  change?: {
-    pageviews: number | null
-    visitors: number | null
-    sessions: number | null
-  }
+  change?: Record<SummaryMetric, number | null>
 }
 
 export type Granularity = 'hour' | 'day' | 'week' | 'month'

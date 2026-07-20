@@ -434,3 +434,39 @@ func TestRenderedReportCarriesEverySection(t *testing.T) {
 		}
 	}
 }
+
+// The three "how well" numbers a client actually asks about, alongside the
+// three "how much" ones. Rendered as text rather than counts, so this checks
+// the formatters survive the template too.
+func TestRenderedReportCarriesTheRateMetrics(t *testing.T) {
+	july := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+
+	s := store(t,
+		// One session of two pages two minutes apart, and one bounce.
+		view(july, "a", "/"),
+		view(july.Add(2*time.Minute), "a", "/pricing"),
+		view(july, "b", "/"),
+	)
+
+	data, err := report.Build(context.Background(), s, site, "2026-07")
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	html, err := report.Render(data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	for _, want := range []string{
+		"Views per visit", "1.50",
+		// One of two sessions saw a single page.
+		"Bounce rate", "50%",
+		// (120s + 0s) / 2 sessions.
+		"Visit duration", "1m",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the email is missing %q", want)
+		}
+	}
+}

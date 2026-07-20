@@ -102,3 +102,35 @@ export function share(value: number, total: number): number {
   if (total <= 0) return 0
   return Math.min(100, (value / total) * 100)
 }
+
+/** A rate held as 0-1, shown as a whole percent. */
+export function percent(rate: number): string {
+  return `${Math.round(rate * 100)}%`
+}
+
+/**
+ * A duration in seconds, as a person would say it.
+ *
+ * Seconds below a minute, minutes and seconds below an hour, hours and minutes
+ * above. Never "0.0h": the point of this is to be read at a glance.
+ */
+export function duration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds))
+
+  if (total < 60) return `${total}s`
+
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) {
+    const rest = total % 60
+    return rest === 0 ? `${minutes}m` : `${minutes}m ${rest}s`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
+}
+
+/** A small average, e.g. views per visit. Two significant-ish digits. */
+export function ratio(value: number): string {
+  return value.toFixed(2)
+}

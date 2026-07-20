@@ -54,6 +54,9 @@ func Subject(d Data) string {
 
 var funcs = template.FuncMap{
 	"num":        formatNumber,
+	"percent":    formatPercent,
+	"duration":   formatDuration,
+	"ratio":      formatRatio,
 	"delta":      formatDelta,
 	"deltaColor": deltaColor,
 	"share":      sharePercent,
@@ -127,6 +130,39 @@ func formatDelta(change *float64, against string) string {
 	return "Unchanged vs " + against
 }
 
+// formatPercent renders a 0-1 rate as a whole percent.
+func formatPercent(rate float64) string {
+	return fmt.Sprintf("%.0f%%", rate*100)
+}
+
+// formatDuration renders seconds the way a person would say them.
+func formatDuration(seconds float64) string {
+	total := int(seconds + 0.5)
+	if total < 0 {
+		total = 0
+	}
+
+	switch {
+	case total < 60:
+		return fmt.Sprintf("%ds", total)
+	case total < 3600:
+		if rest := total % 60; rest != 0 {
+			return fmt.Sprintf("%dm %ds", total/60, rest)
+		}
+		return fmt.Sprintf("%dm", total/60)
+	default:
+		if rest := (total / 60) % 60; rest != 0 {
+			return fmt.Sprintf("%dh %dm", total/3600, rest)
+		}
+		return fmt.Sprintf("%dh", total/3600)
+	}
+}
+
+// formatRatio renders a small average, e.g. pages per visit.
+func formatRatio(value float64) string {
+	return fmt.Sprintf("%.2f", value)
+}
+
 func deltaColor(change *float64) string {
 	switch {
 	case change == nil:
@@ -152,12 +188,6 @@ func sharePercent(value, max int64) int {
 	return pct
 }
 
-// reportTemplate is the monthly email.
-//
-// Tables, not divs, and inline styles, not classes: this has to render in
-// Outlook, which uses Word's rendering engine and understands neither flexbox
-// nor grid. The layout is deliberately one narrow column so it needs no
-// responsive rules to survive a phone.
 // reportTemplate is the monthly email.
 //
 // Tables, not divs, and inline styles, not classes: this has to render in
@@ -221,6 +251,14 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
                   {{ template "tile" dict "Label" "Pageviews" "Value" .Summary.Pageviews "Change" .Change.Pageviews "Against" .CompareLabel }}
                   <td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
                   {{ template "tile" dict "Label" "Sessions" "Value" .Summary.Sessions "Change" .Change.Sessions "Against" .CompareLabel }}
+                </tr>
+                <tr><td colspan="5" style="height:10px;font-size:0;line-height:0;">&nbsp;</td></tr>
+                <tr>
+                  {{ template "texttile" dict "Label" "Views per visit" "Value" (ratio .Summary.ViewsPerVisit) }}
+                  <td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
+                  {{ template "texttile" dict "Label" "Bounce rate" "Value" (percent .Summary.BounceRate) }}
+                  <td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
+                  {{ template "texttile" dict "Label" "Visit duration" "Value" (duration .Summary.AvgDuration) }}
                 </tr>
               </table>
             </td>
@@ -345,6 +383,17 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
     {{ delta .Change .Against }}
   </p>
   {{ end }}
+</td>
+{{ end }}
+
+{{ define "texttile" }}
+<td width="33%" valign="top" style="border:1px solid ` + colorBorder + `;border-radius:8px;padding:14px 12px;">
+  <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:` + colorSubtle + `;">
+    {{ .Label }}
+  </p>
+  <p style="margin:6px 0 0;font-family:` + monoStack + `;font-size:22px;font-weight:600;line-height:1.1;color:` + colorText + `;">
+    {{ .Value }}
+  </p>
 </td>
 {{ end }}
 

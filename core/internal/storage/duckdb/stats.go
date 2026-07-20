@@ -59,6 +59,10 @@ func (s *Store) Summary(ctx context.Context, q storage.Query) (storage.Summary, 
 		return storage.Summary{}, err
 	}
 
+	// The session boundaries are marked once and then reused: numbering each
+	// visitor's events by a running sum of their session starts turns "how
+	// many sessions" into "group by that number", which is what bounce rate
+	// and duration both need and neither could get from a count alone.
 	query := fmt.Sprintf(`
 WITH scoped AS (
 	SELECT visitor_hash, ts, type
@@ -66,7 +70,7 @@ WITH scoped AS (
 	WHERE site_id = ? AND ts >= ? AND ts < ?
 ),
 marked AS (
-	SELECT visitor_hash,
+	SELECT visitor_hash, ts, type,
 		CASE
 			WHEN lag(ts) OVER w IS NULL THEN 1
 			WHEN ts - lag(ts) OVER w > INTERVAL %d MINUTE THEN 1
@@ -74,15 +78,32 @@ marked AS (
 		END AS starts
 	FROM scoped
 	WINDOW w AS (PARTITION BY visitor_hash ORDER BY ts)
+),
+numbered AS (
+	SELECT visitor_hash, ts, type,
+		sum(starts) OVER (
+			PARTITION BY visitor_hash ORDER BY ts
+			ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+		) AS visit
+	FROM marked
+),
+visits AS (
+	SELECT visitor_hash, visit,
+		count(*) FILTER (WHERE type = 'pageview') AS views,
+		date_diff('second', min(ts), max(ts)) AS seconds
+	FROM numbered
+	GROUP BY visitor_hash, visit
 )
 SELECT
 	(SELECT count(*) FILTER (WHERE type = 'pageview') FROM scoped),
 	(SELECT count(DISTINCT visitor_hash) FROM scoped),
-	(SELECT COALESCE(sum(starts), 0) FROM marked)`, sessionGapMinutes())
+	(SELECT count(*) FROM visits),
+	(SELECT COALESCE(avg(CASE WHEN views <= 1 THEN 1.0 ELSE 0.0 END), 0) FROM visits),
+	(SELECT COALESCE(avg(seconds), 0) FROM visits)`, sessionGapMinutes())
 
 	var out storage.Summary
 	err := s.db.QueryRowContext(ctx, query, q.SiteID, q.From, q.To).
-		Scan(&out.Pageviews, &out.Visitors, &out.Sessions)
+		Scan(&out.Pageviews, &out.Visitors, &out.Sessions, &out.BounceRate, &out.AvgDuration)
 	if err != nil {
 		return storage.Summary{}, fmt.Errorf("duckdb: summary: %w", err)
 	}

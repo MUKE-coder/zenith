@@ -2,6 +2,7 @@ package duckdb_test
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -56,9 +57,10 @@ func TestSummaryCountsSessionsByGap(t *testing.T) {
 		t.Fatalf("summary: %v", err)
 	}
 
-	want := storage.Summary{Pageviews: 4, Visitors: 2, Sessions: 3}
-	if got != want {
-		t.Errorf("summary = %+v, want %+v", got, want)
+	// Only the counts: this test is about session boundaries, and asserting
+	// the whole struct would make it fail every time a metric is added.
+	if got.Pageviews != 4 || got.Visitors != 2 || got.Sessions != 3 {
+		t.Errorf("summary = %+v, want 4 pageviews / 2 visitors / 3 sessions", got)
 	}
 }
 
@@ -715,5 +717,97 @@ func TestSummaryOfEmptyPeriod(t *testing.T) {
 	}
 	if (got != storage.Summary{}) {
 		t.Errorf("summary of an empty period = %+v, want all zeroes", got)
+	}
+}
+
+// A bounce is a session that saw one page and left. Two of these three
+// sessions are bounces, so the rate is two thirds -- and it is a rate, not a
+// count, because the count says nothing without the denominator.
+func TestSummaryBounceRate(t *testing.T) {
+	s := seed(t,
+		// v1: two pages in one session. Not a bounce.
+		pageview("v1", "/a", base),
+		pageview("v1", "/b", base.Add(2*time.Minute)),
+		// v2: one page. A bounce.
+		pageview("v2", "/a", base),
+		// v3: one page. A bounce.
+		pageview("v3", "/a", base),
+	)
+
+	got, err := s.Summary(context.Background(), day(base))
+	if err != nil {
+		t.Fatalf("summary: %v", err)
+	}
+
+	if got.Sessions != 3 {
+		t.Fatalf("sessions = %d, want 3", got.Sessions)
+	}
+	if math.Abs(got.BounceRate-2.0/3.0) > 0.0001 {
+		t.Errorf("bounce rate = %v, want 2/3", got.BounceRate)
+	}
+}
+
+// The same visitor returning after the gap is two sessions, and a bounce is
+// judged per session rather than per visitor.
+func TestSummaryBounceRateIsPerSession(t *testing.T) {
+	s := seed(t,
+		// One session with two pages, then a later session with one.
+		pageview("v1", "/a", base),
+		pageview("v1", "/b", base.Add(time.Minute)),
+		pageview("v1", "/c", base.Add(90*time.Minute)),
+	)
+
+	got, err := s.Summary(context.Background(), day(base))
+	if err != nil {
+		t.Fatalf("summary: %v", err)
+	}
+
+	if got.Sessions != 2 {
+		t.Fatalf("sessions = %d, want 2", got.Sessions)
+	}
+	if math.Abs(got.BounceRate-0.5) > 0.0001 {
+		t.Errorf("bounce rate = %v, want 0.5 (one of two sessions bounced)", got.BounceRate)
+	}
+}
+
+// Duration runs from a session's first event to its last. A one-page session
+// is zero seconds: nothing after the arrival says how long the reader stayed,
+// which makes the average an understatement rather than a guess.
+func TestSummaryAverageDuration(t *testing.T) {
+	s := seed(t,
+		// v1: 120 seconds from first to last.
+		pageview("v1", "/a", base),
+		pageview("v1", "/b", base.Add(2*time.Minute)),
+		// v2: one page, so zero.
+		pageview("v2", "/a", base),
+	)
+
+	got, err := s.Summary(context.Background(), day(base))
+	if err != nil {
+		t.Fatalf("summary: %v", err)
+	}
+
+	// (120 + 0) / 2 sessions.
+	if math.Abs(got.AvgDuration-60) > 0.001 {
+		t.Errorf("avg duration = %v, want 60", got.AvgDuration)
+	}
+}
+
+// Views per visit is derived, so it must not divide by zero on a quiet month.
+func TestViewsPerVisit(t *testing.T) {
+	cases := map[string]struct {
+		summary storage.Summary
+		want    float64
+	}{
+		"typical":     {storage.Summary{Pageviews: 9, Sessions: 3}, 3},
+		"no sessions": {storage.Summary{Pageviews: 0, Sessions: 0}, 0},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := tc.summary.ViewsPerVisit(); got != tc.want {
+				t.Errorf("views per visit = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
