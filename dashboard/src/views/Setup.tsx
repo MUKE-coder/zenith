@@ -254,7 +254,11 @@ function DashboardPathPanel({
   const [message, setMessage] = useState<string>()
   const [failed, setFailed] = useState(false)
 
-  const saved = site.dashboard_path ?? ''
+  // What the server last confirmed, tracked here rather than read off the
+  // site prop: that prop comes from a list this view never refetches, so it
+  // still holds the old value after a save. Reading it left Save enabled and
+  // the panel looking like nothing had happened.
+  const [saved, setSaved] = useState(site.dashboard_path ?? '')
   const dirty = path.trim() !== saved
 
   async function save() {
@@ -264,8 +268,15 @@ function DashboardPathPanel({
 
     try {
       const updated = await api.updateSite(site.id, { dashboard_path: path.trim() })
-      onChange(updated.dashboard_path ?? '')
-      setMessage(updated.dashboard_url ? `Reports will link to ${updated.dashboard_url}` : 'Saved.')
+      const stored = updated.dashboard_path ?? ''
+
+      setSaved(stored)
+      onChange(stored)
+      setMessage(
+        updated.dashboard_url
+          ? `Saved. Reports will link to ${updated.dashboard_url}`
+          : 'Saved. This site has no dashboard, so reports will omit the link.',
+      )
     } catch (err: unknown) {
       setFailed(true)
       setMessage(err instanceof Error ? err.message : 'Something went wrong.')

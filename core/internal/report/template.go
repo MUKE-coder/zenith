@@ -30,6 +30,12 @@ const (
 	tintNegative = "#fee2e2"
 	tintWarning  = "#fef3c7"
 
+	// The footer credits Zenith rather than the sending domain. The email is
+	// the developer's, going to their client under their own MAIL FROM; naming
+	// that domain told the reader something they already knew, and linking it
+	// put a stranger's hostname in a client-facing email.
+	zenithURL = "https://zenith.gritframework.dev"
+
 	// Geist will not load in an email client, so the stack degrades to whatever
 	// the reader has. The report is light-only: dark-mode email support is a
 	// minefield of client-specific inversion, and a light email on a dark
@@ -311,7 +317,7 @@ var reportTemplate = template.Must(template.New("report").Funcs(funcs).Parse(`<!
         </table>
 
         <p style="max-width:560px;margin:16px auto 0;font-size:12px;color:` + colorSubtle + `;text-align:center;line-height:1.6;">
-          Sent by {{ with .SentBy }}{{ . }}{{ else }}Zenith{{ end }} · {{ .SiteName }} Analytics<br>
+          Powered by <a href="` + zenithURL + `" style="color:` + colorMuted + `;text-decoration:underline;">Zenith</a> · {{ .SiteName }} Analytics<br>
           You&rsquo;re receiving this because you manage this site.
         </p>
       </td>

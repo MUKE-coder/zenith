@@ -244,3 +244,54 @@ func TestRenderSEOOmitsTheLinkWithoutADashboard(t *testing.T) {
 		t.Error("rendered a dashboard button with no dashboard URL")
 	}
 }
+
+// The counterpart to the omission test: with a path recorded, the button is
+// there and points at the client's own domain. This is the whole reason the
+// path is stored, so it is worth asserting in both directions.
+func TestRenderSEOLinksToTheDashboard(t *testing.T) {
+	html, err := report.RenderSEO(report.SEOData{
+		SiteName: "Acme", Score: 69,
+		DashboardURL: "https://acme.com/zenith",
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !strings.Contains(html, "View full report") {
+		t.Error("no call to action, even with a dashboard to send the reader to")
+	}
+	if !strings.Contains(html, "https://acme.com/zenith") {
+		t.Error("the button does not point at the client's dashboard")
+	}
+}
+
+// The footer credits Zenith, not the domain the mail happened to leave from.
+// That domain is the developer's own sending infrastructure, and putting it in
+// front of their client named a stranger's host in a client-facing email.
+func TestFootersCreditZenith(t *testing.T) {
+	seo, err := report.RenderSEO(report.SEOData{SiteName: "Acme", Score: 90})
+	if err != nil {
+		t.Fatalf("render seo: %v", err)
+	}
+
+	s := store(t)
+	data, err := report.Build(context.Background(), s, site, "2026-06")
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	analytics, err := report.Render(data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	for name, html := range map[string]string{"seo": seo, "analytics": analytics} {
+		if !strings.Contains(html, "Powered by") {
+			t.Errorf("%s: footer does not credit Zenith", name)
+		}
+		if !strings.Contains(html, "https://zenith.gritframework.dev") {
+			t.Errorf("%s: footer does not link to Zenith", name)
+		}
+		if strings.Contains(html, "Sent by") {
+			t.Errorf("%s: footer still names the sending domain", name)
+		}
+	}
+}

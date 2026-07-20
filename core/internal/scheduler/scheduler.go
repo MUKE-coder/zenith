@@ -244,7 +244,6 @@ func (r *Reporter) deliverWindow(
 	if err != nil {
 		return err
 	}
-	data.SentBy = report.SenderDomain(settings.MailFrom)
 
 	html, err := report.Render(data)
 	if err != nil {
@@ -270,7 +269,6 @@ func (r *Reporter) deliverSEO(
 	if err != nil {
 		return err
 	}
-	data.SentBy = report.SenderDomain(settings.MailFrom)
 
 	html, err := report.RenderSEO(data)
 	if err != nil {

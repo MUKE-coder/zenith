@@ -228,7 +228,7 @@ var seoTemplate = template.Must(template.New("seo").Funcs(seoFuncs).Parse(`<!doc
         </table>
 
         <p style="max-width:560px;margin:16px auto 0;font-size:12px;color:` + colorSubtle + `;text-align:center;line-height:1.6;">
-          Sent by {{ with .SentBy }}{{ . }}{{ else }}Zenith{{ end }} · {{ .SiteName }} SEO audit<br>
+          Powered by <a href="` + zenithURL + `" style="color:` + colorMuted + `;text-decoration:underline;">Zenith</a> · {{ .SiteName }} SEO audit<br>
           You&rsquo;re receiving this because you manage this site.
         </p>
       </td>

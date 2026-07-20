@@ -56,9 +56,6 @@ type SEOData struct {
 	Errors   int
 	Warnings int
 
-	// SentBy is the domain the mail went out from, for the footer.
-	SentBy string
-
 	// DashboardURL is the owner's own dashboard, whose SEO tab holds the full
 	// audit. Empty if the site has no dashboard path recorded.
 	DashboardURL string

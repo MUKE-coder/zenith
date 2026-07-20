@@ -4,7 +4,6 @@ package report
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/zenith/core/internal/storage"
@@ -43,10 +42,6 @@ type Data struct {
 	// A month-to-date report compares against the same days of the previous
 	// month, and saying "vs last month" there would overstate it.
 	CompareLabel string
-
-	// SentBy is the domain the mail went out from, for the footer. A client
-	// who half-remembers the email looks for who sent it, not for Zenith.
-	SentBy string
 
 	// DashboardURL is where the owner reads the full picture, on their own
 	// domain. Empty if the site has no dashboard path recorded.
@@ -249,26 +244,6 @@ func BuildWindow(ctx context.Context, events storage.EventStore, site storage.Si
 		CompareLabel: w.CompareLabel,
 		DashboardURL: site.DashboardURL(),
 	}, nil
-}
-
-// SenderDomain reduces a MAIL FROM to the domain it sends from.
-//
-// The footer names who sent the mail, and a client half-remembering it looks
-// for the domain they recognise, not for Zenith. Handles both bare addresses
-// and the "Name <a@b.c>" form; anything unparseable yields "", and the footer
-// falls back to naming Zenith.
-func SenderDomain(mailFrom string) string {
-	from := strings.TrimSpace(mailFrom)
-
-	if i := strings.LastIndex(from, "<"); i != -1 {
-		from = strings.TrimSuffix(from[i+1:], ">")
-	}
-
-	_, domain, found := strings.Cut(strings.TrimSpace(from), "@")
-	if !found {
-		return ""
-	}
-	return strings.TrimSpace(domain)
 }
 
 // percentChange returns the change from before to now, or nil when there is no
