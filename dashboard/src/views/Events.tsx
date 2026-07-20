@@ -113,7 +113,10 @@ function EventList({
   onSelect: (name: string) => void
 }) {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    // Fixed layout for the same reason BreakdownTable uses it: an event name
+    // long enough would otherwise size the column and push the count out of
+    // the panel.
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
       <tbody>
         {rows.map((row) => (
           <tr key={row.label}>
@@ -139,10 +142,24 @@ function EventList({
                   textAlign: 'left',
                 }}
               >
-                <span>{row.label}</span>
+                <span
+                  title={row.label}
+                  style={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {row.label}
+                </span>
                 <span
                   className="mono"
-                  style={{ color: 'var(--text-muted)', fontSize: 'var(--text-data)' }}
+                  style={{
+                    flex: 'none',
+                    color: 'var(--text-muted)',
+                    fontSize: 'var(--text-data)',
+                  }}
                 >
                   {row.pageviews.toLocaleString()}
                 </span>

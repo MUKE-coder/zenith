@@ -1,6 +1,18 @@
+/*
+ * Fixed layout, so the label column absorbs whatever is left rather than
+ * setting the width.
+ *
+ * With the default auto layout the browser sizes columns from their content,
+ * and a cell of nowrap text -- "/blog/ultimate-guide-to-file-uploads-using-
+ * cloudflare-and-aws-s3" -- is as wide as it wants to be. The table then grew
+ * past the panel, pushing the last column out of sight and putting a scrollbar
+ * on the whole page. The ellipsis on .label never had a chance to apply,
+ * because nothing was constraining the cell in the first place.
+ */
 .table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .headRow th {
@@ -53,11 +65,13 @@
   white-space: nowrap;
 }
 
-/* Shrink to content, but never let two numeric columns touch: at width 1%
-   the headers ("Views" and "Visitors") otherwise collide into one word. */
+/* An explicit width, because fixed layout needs one: a percentage would be
+   read against the table rather than the content, and "width: 1%" -- which
+   auto layout treated as "shrink to fit" -- would here mean one percent. Wide
+   enough for the "Visitors" header, which is longer than any number under it. */
 .numeric {
-  width: 1%;
-  padding-left: var(--space-6);
+  width: 84px;
+  padding-left: var(--space-3);
   text-align: right;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
