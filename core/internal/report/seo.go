@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/zenith/core/internal/storage"
 )
@@ -49,6 +50,15 @@ type SEOData struct {
 	// PagesAudited is the true page count, which may exceed len(Pages).
 	PagesAudited int
 
+	// Errors and Warnings count distinct findings across the whole audit, not
+	// only the few listed. The summary tiles state the size of the problem;
+	// the list only shows where to start.
+	Errors   int
+	Warnings int
+
+	// SentBy is the domain the mail went out from, for the footer.
+	SentBy string
+
 	// DashboardURL is the owner's own dashboard, whose SEO tab holds the full
 	// audit. Empty if the site has no dashboard path recorded.
 	DashboardURL string
@@ -66,13 +76,30 @@ type SEOPage struct {
 // SEOIssue is one finding, aggregated across the pages that share it.
 type SEOIssue struct {
 	Severity string
-	Message  string
+
+	// Title is the finding at a glance, and Detail is what to do about it.
+	// The worker writes both as one message, so they are split here: the email
+	// leads with the problem and sets the advice underneath, where a reader
+	// scanning a list can skip it.
+	Title  string
+	Detail string
 
 	// Pages is how many audited pages have this finding.
 	Pages int
 
 	// Example is one page's path, so the reader knows where to look.
 	Example string
+}
+
+// splitMessage divides a finding into its headline and its advice at the first
+// sentence boundary. A message with only one sentence is all headline.
+func splitMessage(message string) (title, detail string) {
+	message = strings.TrimSpace(message)
+
+	if i := strings.Index(message, ". "); i != -1 {
+		return strings.TrimSuffix(message[:i], "."), strings.TrimSpace(message[i+2:])
+	}
+	return strings.TrimSuffix(message, "."), ""
 }
 
 // checksPayload mirrors the audit worker's per-page JSON. Only the fields the
@@ -145,6 +172,8 @@ func BuildSEO(ctx context.Context, store AuditStore, site storage.Site) (SEOData
 		pages = pages[:Rows]
 	}
 
+	issues, errorCount, warningCount := topIssues(results)
+
 	return SEOData{
 		SiteName:     site.Name,
 		SiteDomain:   site.Domain,
@@ -153,8 +182,10 @@ func BuildSEO(ctx context.Context, store AuditStore, site storage.Site) (SEOData
 		ScoreLabel:   scoreLabel(job.Score),
 		ScoreColor:   scoreColor(job.Score),
 		Pages:        pages,
-		Issues:       topIssues(results),
+		Issues:       issues,
 		PagesAudited: audited,
+		Errors:       errorCount,
+		Warnings:     warningCount,
 		DashboardURL: site.DashboardURL(),
 	}, nil
 }
@@ -164,7 +195,9 @@ func BuildSEO(ctx context.Context, store AuditStore, site storage.Site) (SEOData
 // Grouped by message rather than listed per page: "12 images are missing alt
 // text" across four pages is one problem to fix, and four identical lines
 // would bury the other three findings.
-func topIssues(results []storage.AuditResult) []SEOIssue {
+// It also returns how many distinct error and warning findings the audit has
+// in total, which the summary tiles state.
+func topIssues(results []storage.AuditResult) ([]SEOIssue, int, int) {
 	type agg struct {
 		severity string
 		message  string
@@ -206,9 +239,11 @@ func topIssues(results []storage.AuditResult) []SEOIssue {
 
 	out := make([]SEOIssue, 0, len(byID))
 	for _, e := range byID {
+		title, detail := splitMessage(e.message)
 		out = append(out, SEOIssue{
 			Severity: e.severity,
-			Message:  e.message,
+			Title:    title,
+			Detail:   detail,
 			Pages:    e.pages,
 			Example:  e.example,
 		})
@@ -224,10 +259,21 @@ func topIssues(results []storage.AuditResult) []SEOIssue {
 		return out[i].Pages > out[j].Pages
 	})
 
+	// Counted over everything found, not over the few listed: the tiles state
+	// the size of the problem and the list only says where to start.
+	var errors, warnings int
+	for _, issue := range out {
+		if issue.Severity == severityError {
+			errors++
+		} else {
+			warnings++
+		}
+	}
+
 	if len(out) > Issues {
 		out = out[:Issues]
 	}
-	return out
+	return out, errors, warnings
 }
 
 // pathOf reduces a page URL to its path, or returns it whole if it will not
@@ -277,6 +323,26 @@ func scoreColor(score int) string {
 	default:
 		return colorNegative
 	}
+}
+
+// scoreTint is the pill background behind the score's label.
+func scoreTint(score int) string {
+	switch {
+	case score >= 90:
+		return tintPositive
+	case score >= 70:
+		return tintWarning
+	default:
+		return tintNegative
+	}
+}
+
+// severityTint is the pill background behind a finding's severity.
+func severityTint(severity string) string {
+	if severity == severityError {
+		return tintNegative
+	}
+	return tintWarning
 }
 
 // severityLabel names a severity for the email.

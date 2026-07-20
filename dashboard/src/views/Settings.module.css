@@ -50,11 +50,16 @@
   flex-shrink: 0;
 }
 
+/* Wraps rather than overflowing: the controls on the right grew an email
+   field, two checkboxes and a button, which together outgrow the card on a
+   narrow console. Wrapping drops them to their own line instead of pushing
+   the button past the edge. */
 .siteRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border);
 }
@@ -76,13 +81,18 @@
 .ownerEmail {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   min-width: 0;
 }
 
+/* Grows into whatever is left and gives it back first: of everything on this
+   row, the address is the part that survives being narrow. */
 .ownerInput {
-  width: 260px;
-  max-width: 100%;
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 260px;
 }
 
 /* The report picker sits beside its button, so what is about to be sent is
@@ -112,6 +122,10 @@
 .check input {
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+.subtle {
+  color: var(--text-subtle);
 }
 
 .history {

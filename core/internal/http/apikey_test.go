@@ -3,6 +3,7 @@ package http_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,5 +138,45 @@ func TestSessionStillReadsStats(t *testing.T) {
 
 	if body.Pageviews != 1 {
 		t.Errorf("pageviews = %d, want 1", body.Pageviews)
+	}
+}
+
+// The client's own dashboard reads audits with the site's api key: it has no
+// session, only the password gate on the owner's site and the key behind it.
+// Without this its SEO tab could never show the audit the developer ran.
+func TestAPIKeyReadsAudits(t *testing.T) {
+	h := newHarness(t)
+	seedSite(t, h)
+
+	resp := h.apiKeyGet(t, "/api/audits", "zk_secret_api_key")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200 — the owner's SEO tab cannot load", resp.StatusCode)
+	}
+}
+
+// Reading is one thing; spending the deployment's crawl budget is another. An
+// api key resolves to owner claims, and running an audit is developer-only.
+func TestAPIKeyCannotRunAnAudit(t *testing.T) {
+	h := newHarness(t)
+	seedSite(t, h)
+
+	req, err := http.NewRequest(http.MethodPost, h.srv.URL+"/api/audits",
+		strings.NewReader(`{"site_id":"site-1"}`))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set(zhttp.APIKeyHeader, "zk_secret_api_key")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := h.srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status %d, want 403: a client must not be able to trigger a crawl", resp.StatusCode)
 	}
 }

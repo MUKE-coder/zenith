@@ -36,7 +36,7 @@ import {
 const LOGOUT_PATH = '/logout'
 const API_PREFIX = '/api/'
 
-/** Endpoints the proxy will forward. Anything else is refused. */
+/** Stats endpoints the proxy will forward, under /api/stats upstream. */
 const ALLOWED_ENDPOINTS = new Set([
   'summary',
   'timeseries',
@@ -47,6 +47,20 @@ const ALLOWED_ENDPOINTS = new Set([
   'events',
   'realtime',
 ])
+
+/**
+ * The SEO audit the developer ran, read-only.
+ *
+ * These live under /api/audits upstream rather than /api/stats, so they are
+ * matched separately. Reads only, and deliberately: an audit is a headless
+ * Chromium crawl of every page, and a POST reachable from a client's dashboard
+ * would let anyone past the password gate spend the deployment's crawl budget
+ * at will. Zenith refuses it server-side too -- an api key carries owner
+ * claims and creating an audit is developer-only -- but the proxy is the
+ * boundary that should never have offered it.
+ */
+const AUDIT_LIST = 'audits'
+const AUDIT_DETAIL = /^audits\/([A-Za-z0-9_-]{1,64})$/
 
 export type ZenithHandler = (request: Request) => Promise<Response>
 
@@ -154,7 +168,24 @@ function logout(config: ZenithConfig, request: Request): Response {
 }
 
 /**
- * Forwards a stats request to Zenith.
+ * Maps a dashboard endpoint onto the Zenith path it is allowed to reach, or
+ * null if it is not allowed at all.
+ *
+ * The mapping is explicit rather than a prefix rewrite so that adding a route
+ * to Zenith cannot quietly widen what a client's dashboard can ask for.
+ */
+function upstreamPath(endpoint: string): string | null {
+  if (ALLOWED_ENDPOINTS.has(endpoint)) return `/api/stats/${endpoint}`
+  if (endpoint === AUDIT_LIST) return '/api/audits'
+
+  const detail = AUDIT_DETAIL.exec(endpoint)
+  if (detail) return `/api/audits/${detail[1]}`
+
+  return null
+}
+
+/**
+ * Forwards a data request to Zenith.
  *
  * The api key is attached here, server-side. The browser never sees it, never
  * sends it, and cannot ask for a site it does not name: the key itself decides
@@ -163,15 +194,24 @@ function logout(config: ZenithConfig, request: Request): Response {
 async function forward(config: ZenithConfig, request: Request, sub: string): Promise<Response> {
   const endpoint = sub.slice(API_PREFIX.length)
 
+  // Every endpoint behind this proxy reads. The fetch below hardcodes GET, so
+  // without this a POST would be quietly downgraded into one and answered --
+  // which reads like the write succeeded. Refusing is the honest answer, and
+  // it keeps the dashboard from ever appearing to offer a write it cannot do.
+  if (request.method !== 'GET') {
+    return json({ error: 'This endpoint is read-only.' }, 405)
+  }
+
   // An allowlist, not a pass-through. Without it this route is an open proxy
   // into the Zenith service, authenticated with the owner's api key, reachable
   // by anyone who gets past the gate.
-  if (!ALLOWED_ENDPOINTS.has(endpoint)) {
+  const route = upstreamPath(endpoint)
+  if (!route) {
     return json({ error: 'Unknown endpoint.' }, 404)
   }
 
   const incoming = new URL(request.url)
-  const target = new URL(`${config.backendUrl}/api/stats/${endpoint}`)
+  const target = new URL(`${config.backendUrl}${route}`)
 
   // Forward the query, minus `site`: the api key already names the site, and
   // honouring a client-supplied one would invite the confusion of appearing to

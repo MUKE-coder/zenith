@@ -188,8 +188,12 @@ func TestBuildResolvesCountryNames(t *testing.T) {
 	if len(data.TopCountries) != 1 {
 		t.Fatalf("got %d countries, want 1", len(data.TopCountries))
 	}
-	if data.TopCountries[0].Label != "Uganda" {
-		t.Errorf("country = %q, want Uganda", data.TopCountries[0].Label)
+	if data.TopCountries[0].Name != "Uganda" {
+		t.Errorf("country = %q, want Uganda", data.TopCountries[0].Name)
+	}
+	// The code is kept alongside the name: the layout shows both.
+	if data.TopCountries[0].Code != "UG" {
+		t.Errorf("code = %q, want UG", data.TopCountries[0].Code)
 	}
 }
 
@@ -423,7 +427,7 @@ func TestRenderedReportCarriesEverySection(t *testing.T) {
 		"Top countries", "Uganda",
 		"Devices", "mobile",
 		// The link that had nowhere to point until a path was recorded.
-		"https://acme.com/zenith", "View full analytics",
+		"https://acme.com/zenith", "View full dashboard",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the email is missing %q", want)

@@ -44,3 +44,18 @@ export function statsUrl(endpoint: string, query: string): string {
   if (embed) return `${embed.basePath}/api/${endpoint}${query}`
   return `/api/stats/${endpoint}${query}`
 }
+
+/**
+ * The URL for an audit endpoint.
+ *
+ * Same split as statsUrl, and it needs its own because audits do not live
+ * under /api/stats. Embedded, the path collapses to the mount: `audits` and
+ * `audits/<id>` are both names the proxy knows and maps back to /api/audits.
+ * Without this the owner's SEO tab asked their own site for /api/audits, a
+ * route only Zenith has -- which is why it showed nothing.
+ */
+export function auditsUrl(path: string, query = ''): string {
+  const embed = embedConfig()
+  if (embed) return `${embed.basePath}/api/audits${path}${query}`
+  return `/api/audits${path}${query}`
+}

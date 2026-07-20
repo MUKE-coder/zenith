@@ -4,6 +4,7 @@ package report
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/zenith/core/internal/storage"
@@ -35,7 +36,7 @@ type Data struct {
 
 	TopPages     []storage.Count
 	TopReferrers []storage.Count
-	TopCountries []storage.Count
+	TopCountries []CountryRow
 	TopDevices   []storage.Count
 
 	// CompareLabel names what Change is measured against, e.g. "last month".
@@ -43,9 +44,24 @@ type Data struct {
 	// month, and saying "vs last month" there would overstate it.
 	CompareLabel string
 
+	// SentBy is the domain the mail went out from, for the footer. A client
+	// who half-remembers the email looks for who sent it, not for Zenith.
+	SentBy string
+
 	// DashboardURL is where the owner reads the full picture, on their own
 	// domain. Empty if the site has no dashboard path recorded.
 	DashboardURL string
+}
+
+// CountryRow is one country's traffic.
+//
+// The code is kept alongside the resolved name because the email shows both:
+// "UG" is meaningless to the client, but it makes a scanned list line up and
+// tells a reader who does know the codes what they are looking at.
+type CountryRow struct {
+	Code     string
+	Name     string
+	Visitors int64
 }
 
 // Change is the month-over-month movement.
@@ -203,9 +219,15 @@ func BuildWindow(ctx context.Context, events storage.EventStore, site storage.Si
 
 	// "UG" means nothing to the client this email is written for. The console
 	// resolves codes in the browser with Intl; an email has no JavaScript, so
-	// it is resolved here.
-	for i, c := range countries {
-		countries[i].Label = countryName(c.Label)
+	// it is resolved here -- keeping the code, which the layout shows beside
+	// the name.
+	countryRows := make([]CountryRow, 0, len(countries))
+	for _, c := range countries {
+		countryRows = append(countryRows, CountryRow{
+			Code:     c.Label,
+			Name:     countryName(c.Label),
+			Visitors: c.Visitors,
+		})
 	}
 
 	return Data{
@@ -222,11 +244,31 @@ func BuildWindow(ctx context.Context, events storage.EventStore, site storage.Si
 		},
 		TopPages:     pages,
 		TopReferrers: referrers,
-		TopCountries: countries,
+		TopCountries: countryRows,
 		TopDevices:   devices,
 		CompareLabel: w.CompareLabel,
 		DashboardURL: site.DashboardURL(),
 	}, nil
+}
+
+// SenderDomain reduces a MAIL FROM to the domain it sends from.
+//
+// The footer names who sent the mail, and a client half-remembering it looks
+// for the domain they recognise, not for Zenith. Handles both bare addresses
+// and the "Name <a@b.c>" form; anything unparseable yields "", and the footer
+// falls back to naming Zenith.
+func SenderDomain(mailFrom string) string {
+	from := strings.TrimSpace(mailFrom)
+
+	if i := strings.LastIndex(from, "<"); i != -1 {
+		from = strings.TrimSuffix(from[i+1:], ">")
+	}
+
+	_, domain, found := strings.Cut(strings.TrimSpace(from), "@")
+	if !found {
+		return ""
+	}
+	return strings.TrimSpace(domain)
 }
 
 // percentChange returns the change from before to now, or nil when there is no

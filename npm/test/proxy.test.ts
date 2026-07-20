@@ -345,3 +345,57 @@ test('an unreachable Zenith service is a clear error, not a crash', async () => 
   const body = (await res.json()) as { error: string }
   assert.match(body.error, /Couldn't reach/)
 })
+
+// The developer runs an audit in their console; the client reads it in their
+// own dashboard. Without this the SEO tab asked the owner's own site for
+// /api/audits -- a route only Zenith has -- and showed nothing.
+test('the audit list is forwarded to /api/audits', async () => {
+  received = []
+  const handle = createHandler(await config())
+
+  const res = await handle(authed(`${MOUNT}/api/audits`))
+  assert.equal(res.status, 200)
+
+  const seen = onlyReceived()
+  assert.match(seen.path, /^\/api\/audits/)
+  // Never /api/stats/audits: audits are not a stats endpoint.
+  assert.doesNotMatch(seen.path, /\/api\/stats\//)
+  assert.equal(seen.apiKey, 'zk_secret')
+})
+
+test('an audit detail is forwarded with its id', async () => {
+  received = []
+  const handle = createHandler(await config())
+
+  const res = await handle(authed(`${MOUNT}/api/audits/job-abc123`))
+  assert.equal(res.status, 200)
+  assert.match(onlyReceived().path, /^\/api\/audits\/job-abc123/)
+})
+
+// An audit is a headless crawl of every page. A POST reachable from a client's
+// dashboard would let anyone past the password gate spend the crawl budget.
+test('running an audit is not reachable through the proxy', async () => {
+  received = []
+  const handle = createHandler(await config())
+
+  const res = await handle(
+    authed(`${MOUNT}/api/audits`, { method: 'POST', body: '{"site_id":"site-1"}' }),
+  )
+
+  // The proxy only forwards GETs, so the POST must not have reached Zenith.
+  assert.equal(received.length, 0, 'a POST reached the Zenith service')
+  assert.notEqual(res.status, 201)
+})
+
+// The allowlist is the boundary: a new route in Zenith must not become
+// reachable from a client's dashboard by accident.
+test('an unknown audit path is refused', async () => {
+  received = []
+  const handle = createHandler(await config())
+
+  for (const path of ['/api/audits/../sites', '/api/auditsx', '/api/audits/a/b']) {
+    const res = await handle(authed(`${MOUNT}${path}`))
+    assert.equal(res.status, 404, `${path} was not refused`)
+  }
+  assert.equal(received.length, 0, 'a refused path still reached Zenith')
+})

@@ -1,4 +1,4 @@
-import { isEmbedded, statsUrl } from './embed'
+import { auditsUrl, isEmbedded, statsUrl } from './embed'
 import type {
   Audit,
   AuditDetail,
@@ -162,11 +162,13 @@ export const api = {
   deleteSite: (id: string) => request<void>(`/api/sites/${id}`, { method: 'DELETE' }),
 
   audits: (siteId: string, signal?: AbortSignal) =>
-    request<AuditsResponse>(`/api/audits${query({ site: siteId })}`, { signal }),
+    request<AuditsResponse>(auditsUrl('', query({ site: siteId })), { signal }),
 
   audit: (id: string, signal?: AbortSignal) =>
-    request<AuditDetail>(`/api/audits/${id}`, { signal }),
+    request<AuditDetail>(auditsUrl(`/${id}`), { signal }),
 
+  // Not embed-aware on purpose: running an audit is the developer's, from the
+  // console. The proxy refuses it, and so does Zenith.
   runAudit: (siteId: string) =>
     request<Audit>('/api/audits', { method: 'POST', body: { site_id: siteId } }),
 

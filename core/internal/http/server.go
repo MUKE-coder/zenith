@@ -131,8 +131,15 @@ func (s *Server) Routes() http.Handler {
 
 	// SEO audits. Running one is the developer's to trigger; reading the
 	// report is scoped to whoever may read the site it is about.
+	//
+	// Reads take either credential, like stats do. The client's own dashboard
+	// has no session -- it acts for whoever passed the password gate on the
+	// owner's site and proves itself with the site's api key -- and without
+	// this its SEO tab could never load the audit the developer ran. Running
+	// an audit stays behind RequireDeveloper, which an api key's owner claims
+	// can never satisfy: a client cannot spend the deployment's crawl budget.
 	r.Route("/api/audits", func(r chi.Router) {
-		r.Use(s.RequireAuth)
+		r.Use(s.RequireStatsAccess)
 
 		r.Get("/", s.handleListAudits)
 		r.Get("/{id}", s.handleAuditDetail)

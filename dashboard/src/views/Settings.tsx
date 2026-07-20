@@ -257,6 +257,17 @@ function SiteReportRow({ site, emailReady, onUnauthorized }: SiteReportRowProps)
             {lastFailure.period} failed: {lastFailure.error}
           </p>
         )}
+
+        {/* The report's "view full dashboard" button needs somewhere to point,
+            and only this site's own app knows where. Said here because the
+            symptom -- an email that simply has no button -- gives the
+            developer nothing to search for. */}
+        {!message && !lastFailure && !site.dashboard_path && (
+          <p className={styles.hint}>
+            No dashboard link in this site&apos;s reports.{' '}
+            <span className={styles.subtle}>Set its path in Setup → Client dashboard.</span>
+          </p>
+        )}
       </div>
 
       <div className={styles.ownerEmail}>
