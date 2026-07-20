@@ -53,17 +53,26 @@ export type AnalyticsProps = {
 export function Analytics({ config }: AnalyticsProps) {
   const { backendUrl, siteKey } = config ?? {}
 
-  // Missing configuration renders nothing rather than throwing. Analytics must
-  // never be the reason a page fails to load -- but in development it says so,
-  // because silently collecting nothing is its own kind of bug.
+  // Missing configuration renders nothing rather than throwing: analytics must
+  // never be the reason a page fails to load.
+  //
+  // But it says so in production too, and that is deliberate. This used to warn
+  // only in development, which meant the one deployment that mattered failed in
+  // total silence -- a site statically prerendered without ZENITH_SITE_KEY in
+  // the build environment bakes an empty snippet into every page and collects
+  // nothing, for weeks, with a dashboard full of zeroes as the only symptom.
+  // A build log is exactly where that should have been caught.
   if (!backendUrl || !siteKey) {
-    if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
-      console.warn(
-        `[zenith] <Analytics /> rendered nothing: config is missing ${
-          !backendUrl ? 'backendUrl' : 'siteKey'
-        }. Both are on the Setup tab of your Zenith console.`,
-      )
-    }
+    const missing = !backendUrl ? 'backendUrl' : 'siteKey'
+    const env = !backendUrl ? 'ZENITH_URL' : 'ZENITH_SITE_KEY'
+
+    console.warn(
+      `[zenith] <Analytics /> rendered nothing and no pageviews will be recorded: ` +
+        `config is missing ${missing}. Set ${env} and check it is present when this ` +
+        `page is rendered — a statically prerendered page reads it at build time, ` +
+        `not at run time, so it must be set for the build too. ` +
+        `Both values are on the Setup tab of your Zenith console.`,
+    )
     return null
   }
 

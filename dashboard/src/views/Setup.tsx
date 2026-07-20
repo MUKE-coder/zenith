@@ -199,6 +199,8 @@ function SiteSetup({ site, onDeleted }: { site: Site; onDeleted: () => void }) {
         />
       </Panel>
 
+      <DeployPanel backend={backend} path={path || DEFAULT_DASHBOARD_PATH} />
+
       <Panel title="Danger zone">
         <DeleteSite site={site} onDeleted={onDeleted} />
       </Panel>
@@ -230,6 +232,72 @@ function CopyButton({ value, className }: { value: string; className?: string })
     <button type="button" className={className ?? styles.reveal} onClick={copy}>
       {copied ? 'Copied' : 'Copy'}
     </button>
+  )
+}
+
+/**
+ * The two things that break a correct integration once it is deployed.
+ *
+ * Both are invisible in development and silent in production, which is why
+ * they are stated here, beside the keys, rather than left to whoever thinks to
+ * open the docs: a Content-Security-Policy that blocks the dashboard's
+ * stylesheet, and an environment variable that is present at run time but not
+ * at build time.
+ */
+function DeployPanel({ backend, path }: { backend: string; path: string }) {
+  const csp =
+    `script-src 'self' ${backend};\n` +
+    `style-src  'self' 'unsafe-inline' ${backend};\n` +
+    `font-src   'self' data: ${backend};\n` +
+    `connect-src 'self' ${backend};`
+
+  const dockerfile =
+    `# Next.js reads these while it renders, and a prerendered page renders\n` +
+    `# during the build — so they must exist here, not only at run time.\n` +
+    `ARG ZENITH_URL\n` +
+    `ARG ZENITH_SITE_KEY\n` +
+    `ENV ZENITH_URL=$ZENITH_URL\n` +
+    `ENV ZENITH_SITE_KEY=$ZENITH_SITE_KEY\n\n` +
+    `RUN npm run build`
+
+  const compose =
+    `services:\n` +
+    `  web:\n` +
+    `    build:\n` +
+    `      context: ./web\n` +
+    `      args:\n` +
+    `        ZENITH_URL: \${ZENITH_URL}\n` +
+    `        ZENITH_SITE_KEY: \${ZENITH_SITE_KEY}\n` +
+    `    env_file:\n` +
+    `      - .env    # the secrets, read at run time`
+
+  return (
+    <Panel title="Deploying">
+      <div className={styles.step}>
+        <p className={styles.stepLabel}>
+          <strong>If your app sends a Content-Security-Policy</strong>, it has to allow this
+          console&apos;s origin. The dashboard you mount at <code>{path}</code> loads its
+          stylesheet, script and fonts from here, and a policy that allows only the script
+          renders an unstyled page that otherwise works.
+        </p>
+        <CodeBlock code={csp} />
+
+        <p className={styles.stepLabel}>
+          <strong>If your pages are statically prerendered</strong> — the Next.js default —
+          the tracker is rendered at build time, so <code>ZENITH_SITE_KEY</code> has to be set
+          for the <em>build</em>. Set only at run time it arrives too late, the snippet is
+          baked out of every page, and nothing is ever recorded. Hosts that build from a
+          dashboard (Vercel, Netlify) do this for you; Docker does not.
+        </p>
+        <CodeBlock code={dockerfile} />
+
+        <p className={styles.stepLabel}>
+          With Docker Compose, pass it as a build argument as well as an environment variable
+          — and remember a rebuild is required, not a restart:
+        </p>
+        <CodeBlock code={compose} />
+      </div>
+    </Panel>
   )
 }
 

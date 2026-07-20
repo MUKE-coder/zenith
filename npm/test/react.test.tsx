@@ -59,3 +59,46 @@ test('renders nothing when the config is incomplete', () => {
   )
   assert.equal(missingUrl, '')
 })
+
+// The failure this exists to prevent: a production build with no site key
+// bakes an empty snippet into every prerendered page and collects nothing,
+// with a dashboard full of zeroes as the only symptom. Warning only in
+// development meant the one build that mattered was the one that stayed quiet.
+test('warns in production when the config is incomplete', () => {
+  const original = process.env.NODE_ENV
+  const warnings: string[] = []
+  const realWarn = console.warn
+  console.warn = (msg: unknown) => void warnings.push(String(msg))
+
+  try {
+    process.env.NODE_ENV = 'production'
+    renderToStaticMarkup(
+      <Analytics config={{ backendUrl: 'https://zenith.example.com', siteKey: '' }} />,
+    )
+  } finally {
+    console.warn = realWarn
+    process.env.NODE_ENV = original
+  }
+
+  assert.equal(warnings.length, 1, 'a production build said nothing about collecting nothing')
+  assert.match(warnings[0]!, /siteKey/)
+  assert.match(warnings[0]!, /ZENITH_SITE_KEY/)
+  // The build-time trap is the actual cause, so the message has to name it.
+  assert.match(warnings[0]!, /build time/)
+})
+
+// A correctly configured render must stay silent, or the warning becomes noise
+// that everyone learns to scroll past.
+test('says nothing when the config is complete', () => {
+  const warnings: string[] = []
+  const realWarn = console.warn
+  console.warn = (msg: unknown) => void warnings.push(String(msg))
+
+  try {
+    renderToStaticMarkup(<Analytics config={config} />)
+  } finally {
+    console.warn = realWarn
+  }
+
+  assert.equal(warnings.length, 0, `warned about a valid config: ${warnings[0]}`)
+})
