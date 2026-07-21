@@ -80,6 +80,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 That's it. Pageviews — including client-side route changes — are recorded from
 then on.
 
+> [!IMPORTANT]
+> **`ZENITH_SITE_KEY` is read when the page renders, and a prerendered page
+> renders during `next build`.** If the key is only set at run time — a Docker
+> `env_file`, a compose `environment:` block — the build sees nothing, an empty
+> snippet is baked into every page, and no pageviews are ever recorded. The
+> only symptom is a dashboard of zeroes. Set it as a build argument too. See
+> [Deploying](#deploying).
+
+Since 0.4.1 the component warns in the build log when it renders with no key,
+naming the missing variable — so a build that would have shipped blind says so.
+On a site that must not ship blind at all, make it fatal:
+
+```tsx
+<Analytics config={ZENITH_PUBLIC} required />
+```
+
+`required` throws when the key is missing instead of warning, which fails the
+build of a prerendered page rather than letting it deploy silent. It is opt-in
+per site; the default never breaks a page over analytics.
+
 **Pass `ZENITH_PUBLIC`, not `ZENITH_CONFIG`.** The component reads only
 `backendUrl` and `siteKey`, so the two objects behave identically here — but
 they fail differently. `ZENITH_CONFIG` carries `apiKey` and `jwtSecret`, and if
@@ -221,6 +241,74 @@ Easy to confuse, so worth stating plainly:
 | **Sees** | Every site you manage | Exactly one site, read-only |
 
 This package only configures the second one.
+
+## Deploying
+
+Two things outside your code decide whether a correct integration works once it
+is live. Both fail silently, and both have bitten real deployments.
+
+**Environment variables are read when the page renders.** A statically
+prerendered page — the Next.js default — renders during `next build`, so
+`ZENITH_URL` and `ZENITH_SITE_KEY` must be present *for the build*, not only at
+run time. The three secrets (`ZENITH_API_KEY`, `ZENITH_PW_HASH`,
+`ZENITH_JWT_SECRET`) are read only by the dashboard route, which is
+`force-dynamic`, so those are needed at run time alone.
+
+| Variable | Needed at | Because |
+|---|---|---|
+| `ZENITH_URL` | **build** | the tracker is inlined when the page renders |
+| `ZENITH_SITE_KEY` | **build** | same — a runtime value cannot fix baked HTML |
+| `ZENITH_API_KEY` | run time | read only by the `force-dynamic` dashboard route |
+| `ZENITH_PW_HASH` | run time | read only by the dashboard route |
+| `ZENITH_JWT_SECRET` | run time | read only by the dashboard route |
+
+On Vercel or Netlify the build runs where your variables already are, so this
+usually just works. With Docker, pass the two public values as build arguments:
+
+```dockerfile
+ARG ZENITH_URL
+ARG ZENITH_SITE_KEY
+ENV ZENITH_URL=$ZENITH_URL
+ENV ZENITH_SITE_KEY=$ZENITH_SITE_KEY
+RUN npm run build
+```
+
+```yaml
+# docker-compose.yml — a build arg AND, for the secrets, an env_file
+services:
+  web:
+    build:
+      context: ./web
+      args:
+        ZENITH_URL: ${ZENITH_URL}
+        ZENITH_SITE_KEY: ${ZENITH_SITE_KEY}
+    env_file:
+      - .env
+```
+
+> [!WARNING]
+> Supplying the site key only through `env_file` or `environment:` is the most
+> common cause of "no pageviews": those reach the container at run time, after
+> the HTML was built. And changing a build argument needs
+> `docker compose build web`, not a restart — a restart re-serves the same
+> pages.
+
+**If your app sends a Content-Security-Policy, it must allow your Zenith
+origin.** The embedded dashboard loads its stylesheet, script and fonts from
+your Zenith service and calls back to your own origin for data:
+
+```
+script-src  'self' https://zenith.example.com;
+style-src   'self' 'unsafe-inline' https://zenith.example.com;
+font-src    'self' data: https://zenith.example.com;
+connect-src 'self' https://zenith.example.com;
+```
+
+> [!WARNING]
+> Allowing the origin for `script-src` alone is the trap: the dashboard boots,
+> logs in and shows the right numbers — completely unstyled, because the
+> stylesheet was blocked. It looks like a broken build and is a blocked
+> stylesheet. `font-src` fails the same way, quieter.
 
 ## config/zenith.ts
 

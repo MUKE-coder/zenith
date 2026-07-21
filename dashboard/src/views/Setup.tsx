@@ -274,28 +274,40 @@ function DeployPanel({ backend, path }: { backend: string; path: string }) {
   return (
     <Panel title="Deploying">
       <div className={styles.step}>
-        <p className={styles.stepLabel}>
-          <strong>If your app sends a Content-Security-Policy</strong>, it has to allow this
-          console&apos;s origin. The dashboard you mount at <code>{path}</code> loads its
-          stylesheet, script and fonts from here, and a policy that allows only the script
-          renders an unstyled page that otherwise works.
-        </p>
-        <CodeBlock code={csp} />
-
-        <p className={styles.stepLabel}>
-          <strong>If your pages are statically prerendered</strong> — the Next.js default —
-          the tracker is rendered at build time, so <code>ZENITH_SITE_KEY</code> has to be set
-          for the <em>build</em>. Set only at run time it arrives too late, the snippet is
-          baked out of every page, and nothing is ever recorded. Hosts that build from a
-          dashboard (Vercel, Netlify) do this for you; Docker does not.
+        <p className={styles.warn}>
+          <span>
+            <strong>Dashboard of zeroes, no pageviews?</strong> Your pages are statically
+            prerendered — the Next.js default — so the tracker is written at build time, and{' '}
+            <code>ZENITH_SITE_KEY</code> has to be set for the <em>build</em>. Supplied only at
+            run time it arrives after the HTML exists, the snippet is baked out of every page,
+            and nothing is ever recorded. Vercel and Netlify build where your variables already
+            are; Docker does not.
+          </span>
         </p>
         <CodeBlock code={dockerfile} />
 
         <p className={styles.stepLabel}>
-          With Docker Compose, pass it as a build argument as well as an environment variable
-          — and remember a rebuild is required, not a restart:
+          With Docker Compose, pass it as a build argument as well as an environment variable —
+          and a rebuild is required, not a restart, because a restart re-serves the same HTML:
         </p>
         <CodeBlock code={compose} />
+
+        <p className={styles.stepLabel}>
+          To make this loud next time, add <code>required</code> to the tracker:{' '}
+          <code>&lt;Analytics config=&#123;ZENITH_PUBLIC&#125; required /&gt;</code> throws when
+          the key is missing, so a prerendered build fails instead of shipping blind.
+        </p>
+
+        <p className={styles.warn}>
+          <span>
+            <strong>Dashboard loads unstyled, like a broken page?</strong> Your
+            Content-Security-Policy is allowing this console&apos;s origin for the script but
+            not the stylesheet. The dashboard at <code>{path}</code> loads its CSS, JS and
+            fonts from here — all four directives need the origin, not just{' '}
+            <code>script-src</code>.
+          </span>
+        </p>
+        <CodeBlock code={csp} />
       </div>
     </Panel>
   )

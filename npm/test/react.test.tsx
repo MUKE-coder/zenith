@@ -102,3 +102,30 @@ test('says nothing when the config is complete', () => {
 
   assert.equal(warnings.length, 0, `warned about a valid config: ${warnings[0]}`)
 })
+
+// The opt-in strict path: a site declared required must not ship blind. On a
+// prerendered page this throw is what turns next build red.
+test('required throws when the config is incomplete', () => {
+  assert.throws(
+    () =>
+      renderToStaticMarkup(
+        <Analytics config={{ backendUrl: 'https://zenith.example.com', siteKey: '' }} required />,
+      ),
+    /siteKey/,
+    'a required Analytics rendered nothing instead of failing',
+  )
+})
+
+// required changes nothing when the config is present.
+test('required renders the tracker normally when configured', () => {
+  const html = renderToStaticMarkup(<Analytics config={config} required />)
+  assert.match(html, /data-site-key="zk_public"/)
+})
+
+// Without required the default stays lenient: a missing key must never break a
+// page that merely forgot to configure analytics.
+test('the default never throws on an incomplete config', () => {
+  assert.doesNotThrow(() =>
+    renderToStaticMarkup(<Analytics config={{ backendUrl: '', siteKey: '' }} />),
+  )
+})

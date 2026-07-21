@@ -17,6 +17,38 @@
   line-height: 1.5;
 }
 
+/* A symptom-first warning. The two deployment traps fail silently, so what a
+   reader needs is the symptom they would search for, stated before the fix. */
+.warn {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  border-radius: var(--radius-card);
+}
+
+.warn::before {
+  content: "!";
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  background: var(--warning);
+  border-radius: 50%;
+}
+
+.warn strong {
+  color: var(--text);
+}
+
 .error {
   color: var(--negative);
 }
