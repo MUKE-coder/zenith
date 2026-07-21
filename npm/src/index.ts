@@ -17,7 +17,7 @@ export { TRACKER_SOURCE, trackerAttributes } from './tracker.js'
 import { TRACKER_SOURCE, trackerAttributes } from './tracker.js'
 
 /** Kept in step with package.json by hand; nothing reads it but a human. */
-export const VERSION = '0.4.1'
+export const VERSION = '0.4.2'
 
 /**
  * Props for the tracking script tag.

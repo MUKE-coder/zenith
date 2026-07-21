@@ -154,6 +154,25 @@ export function IconChevronDown({ className }: { className?: string }) {
   )
 }
 
+export function IconEye({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  )
+}
+
+export function IconEyeOff({ className }: { className?: string }) {
+  return (
+    <Svg className={className}>
+      <path d="M10.7 6.2A9.9 9.9 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3 3.6M6.3 7.8A17.6 17.6 0 0 0 2 12s3.5 6 10 6a9.9 9.9 0 0 0 3.6-.7" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="m3 3 18 18" />
+    </Svg>
+  )
+}
+
 /**
  * The sidebar collapse control: a panel with its divider, and an arrow through
  * it. One glyph for both directions -- the CSS flips it -- because two mirrored

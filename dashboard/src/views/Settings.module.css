@@ -128,6 +128,44 @@
   color: var(--text-subtle);
 }
 
+/* A masked field with a reveal button, so a pasted key can be checked before
+   it is saved and never seen again. */
+.revealWrap {
+  position: relative;
+}
+
+.revealInput {
+  padding-right: calc(var(--space-8) + var(--space-2));
+}
+
+.reveal {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+.reveal:hover {
+  color: var(--text);
+}
+
+.reveal svg {
+  width: 18px;
+  height: 18px;
+}
+
 .history {
   display: flex;
   flex-direction: column;

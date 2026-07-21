@@ -71,6 +71,7 @@ export function gatePage(options: {
   h1 { margin: 0 0 4px; font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
   .site { margin: 0 0 24px; color: var(--text-muted); }
   label { display: block; margin-bottom: 8px; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+  .field { position: relative; }
   input {
     width: 100%;
     padding: 8px 12px;
@@ -81,6 +82,27 @@ export function gatePage(options: {
     border: 1px solid var(--border);
     border-radius: 8px;
   }
+  /* Room for the reveal button, so a long password does not run under it. */
+  input.hasReveal { padding-right: 40px; }
+  .reveal {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 160ms ease-out;
+  }
+  .reveal:hover { color: var(--text); background: none; }
+  .reveal svg { width: 18px; height: 18px; }
   button {
     width: 100%;
     margin-top: 24px;
@@ -114,11 +136,45 @@ export function gatePage(options: {
     <p class="site">${escapeHtml(siteName)}</p>
     <form method="POST" action="${escapeHtml(action)}">
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+      <div class="field">
+        <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+        <!-- Hidden until the script below reveals it. A dashboard served
+             behind a strict Content-Security-Policy will block this inline
+             script, and a reveal button that cannot reveal is worse than no
+             button -- so it only appears once the script has wired it up. -->
+        <button type="button" id="reveal" class="reveal" aria-label="Show password" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
       ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ''}
       <button type="submit">View analytics</button>
     </form>
   </main>
+  <script>
+    (function () {
+      var input = document.getElementById('password');
+      var reveal = document.getElementById('reveal');
+      if (!input || !reveal) return;
+
+      var eye = reveal.innerHTML;
+      var eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.7 6.2A9.9 9.9 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3 3.6M6.3 7.8A17.6 17.6 0 0 0 2 12s3.5 6 10 6a9.9 9.9 0 0 0 3.6-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m3 3 18 18"/></svg>';
+
+      input.classList.add('hasReveal');
+      reveal.hidden = false;
+
+      reveal.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        reveal.setAttribute('aria-pressed', String(show));
+        reveal.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        reveal.innerHTML = show ? eyeOff : eye;
+        input.focus();
+      });
+    })();
+  </script>
 </body>
 </html>`
 }

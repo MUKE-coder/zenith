@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { IconGlobe } from '../components/icons'
+import { IconEye, IconEyeOff, IconGlobe } from '../components/icons'
 import { EmptyState, ErrorState, Panel, SkeletonRows } from '../components/Panel'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../lib/api'
@@ -83,6 +83,7 @@ function EmailSettings({ configured, mailFrom, ready, onSaved }: EmailSettingsPr
   // The key is never sent to the browser, so the field starts empty and only a
   // typed value is submitted. Leaving it blank keeps the stored key.
   const [key, setKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
   const [from, setFrom] = useState(mailFrom)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
@@ -119,15 +120,27 @@ function EmailSettings({ configured, mailFrom, ready, onSaved }: EmailSettingsPr
         <label className="label" htmlFor="resend-key">
           Resend API key
         </label>
-        <input
-          id="resend-key"
-          className="input"
-          type="password"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          placeholder={configured ? 'Stored — type a new key to replace it' : 're_...'}
-          autoComplete="off"
-        />
+        <div className={styles.revealWrap}>
+          <input
+            id="resend-key"
+            className={`input ${styles.revealInput}`}
+            type={showKey ? 'text' : 'password'}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={configured ? 'Stored — type a new key to replace it' : 're_...'}
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className={styles.reveal}
+            onClick={() => setShowKey((v) => !v)}
+            aria-label={showKey ? 'Hide key' : 'Show key'}
+            aria-pressed={showKey}
+            tabIndex={-1}
+          >
+            {showKey ? <IconEyeOff /> : <IconEye />}
+          </button>
+        </div>
         <p className={styles.hint}>
           {configured
             ? 'A key is stored. It is never shown again — leave this blank to keep it.'

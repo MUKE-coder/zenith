@@ -399,3 +399,15 @@ test('an unknown audit path is refused', async () => {
   }
   assert.equal(received.length, 0, 'a refused path still reached Zenith')
 })
+
+// The reveal button starts hidden so a strict CSP that blocks the inline
+// script cannot leave a dead control on the page, and the field makes room
+// for it only once the script has run.
+test('the gate ships a hidden reveal button and a script to enable it', async () => {
+  const handle = createHandler(await config())
+  const html = await (await handle(new Request(url(MOUNT)))).text()
+
+  assert.match(html, /id="reveal"[^>]*\bhidden\b/, 'reveal button is not hidden by default')
+  assert.match(html, /reveal\.hidden = false/, 'no script to reveal the button')
+  assert.match(html, /input\.type = show \? 'text' : 'password'/, 'no toggle logic')
+})
