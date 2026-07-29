@@ -126,7 +126,7 @@ Next:
        ZENITH_URL=https://zenith.example.com
        ZENITH_SITE_KEY=zk_...          # public; from your Zenith console: Add site
        ZENITH_API_KEY=zk_...           # secret; same place
-       ZENITH_PW_HASH=$(pnpm exec zenith hash)
+       ZENITH_PW_HASH=$(npx zenith hash)
        ZENITH_JWT_SECRET=${secret}
 
      The jwt secret above was generated for you. Keep it stable -- changing it
@@ -273,8 +273,8 @@ function configTemplate(): string {
  * dashboard) come exclusively from the deployment environment:
  *
  *   ZENITH_API_KEY     — from the Zenith console → Add site
- *   ZENITH_PW_HASH     — bcrypt hash from \`pnpm exec zenith hash\`
- *   ZENITH_JWT_SECRET  — any long random string (\`pnpm exec zenith init\` generates one)
+ *   ZENITH_PW_HASH     — bcrypt hash from \`npx zenith hash\`
+ *   ZENITH_JWT_SECRET  — any long random string (\`npx zenith init\` generates one)
  *
  * Without them the tracker still runs; only the dashboard stays offline.
  */

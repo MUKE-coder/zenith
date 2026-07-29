@@ -61,8 +61,8 @@ function SiteSetup({ site, onDeleted }: { site: Site; onDeleted: () => void }) {
 
   const installSteps =
     `pnpm add zenith-analytics\n` +
-    `pnpm exec zenith init      # scaffolds config/zenith.ts + the dashboard route\n` +
-    `pnpm exec zenith hash      # a password for the client's dashboard`
+    `npx zenith init      # scaffolds config/zenith.ts + the dashboard route\n` +
+    `npx zenith hash      # a password for the client's dashboard`
 
   const config =
     `import type { ZenithConfig } from "zenith-analytics"\n\n` +

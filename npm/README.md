@@ -19,8 +19,8 @@ your developer) run.
 
 ```sh
 pnpm add zenith-analytics
-pnpm exec zenith init      # scaffolds config/zenith.ts and the dashboard route
-pnpm exec zenith hash      # generates a bcrypt hash for the dashboard password
+npx zenith init      # scaffolds config/zenith.ts and the dashboard route
+npx zenith hash      # generates a bcrypt hash for the dashboard password
 ```
 
 `init` writes `config/zenith.ts` (under `src/` if your routes live there). Set `siteDomain` there
@@ -50,8 +50,8 @@ The three secrets come from the deployment environment and nowhere else:
 
 ```sh
 ZENITH_API_KEY=zk_...        # reads your analytics — from the console → Add site
-ZENITH_PW_HASH=...           # from `pnpm exec zenith hash` (interpolation-safe, no $)
-ZENITH_JWT_SECRET=...        # any long random string; `pnpm exec zenith init` prints one
+ZENITH_PW_HASH=...           # from `npx zenith hash` (interpolation-safe, no $)
+ZENITH_JWT_SECRET=...        # any long random string; `npx zenith init` prints one
 ```
 
 Without them the tracker still runs and the dashboard answers 503 — see
@@ -183,7 +183,7 @@ async rewrites() {
 `bodyParser: false` matters: the handler reads the password form itself, and Next's parser
 would consume the stream first, leaving nothing to read.
 
-`pnpm exec zenith init` scaffolds whichever router it detects, with the exact wiring.
+`npx zenith init` scaffolds whichever router it detects, with the exact wiring.
 
 ### Why the route is guarded
 
@@ -217,7 +217,7 @@ which never reaches the browser.
 ### Setting the password
 
 ```sh
-pnpm exec zenith hash     # prompts, prints a hash for ZENITH_PW_HASH
+npx zenith hash     # prompts, prints a hash for ZENITH_PW_HASH
 ```
 
 Set the result as `ZENITH_PW_HASH` in your deployment environment. Never store a plaintext
@@ -234,7 +234,7 @@ never learns it. A correct password mints a signed, HttpOnly, first-party cookie
 > any environment with no escaping; the config decodes it back. A raw `$2b$…` hash still
 > works, if you already have one — you just have to escape it for whatever reads it.
 
-To change it, run `pnpm exec zenith hash` again and replace the variable. To publish the dashboard
+To change it, run `npx zenith hash` again and replace the variable. To publish the dashboard
 with no gate at all, set `protected: false` in the config.
 
 ### Two dashboards, two passwords
@@ -322,7 +322,7 @@ connect-src 'self' https://zenith.example.com;
 
 A typed module, read server-side only, that exports two objects and one predicate. It is **safe
 to commit**: it names the environment variables the secrets arrive in and holds none of their
-values. `pnpm exec zenith init` writes it — under `src/` when your routes live there, so the `@` alias
+values. `npx zenith init` writes it — under `src/` when your routes live there, so the `@` alias
 resolves. If your project has no `@` alias, `init` writes a correct relative import instead.
 
 - **`ZENITH_PUBLIC`** — `backendUrl` and `siteKey`. Give this to `<Analytics />`.
@@ -337,7 +337,7 @@ resolves. If your project has no `@` alias, `init` writes a correct relative imp
 | `dashboardPath` | in the file — public | — | `/analytics-dashboard` | Where the dashboard mounts |
 | `protected` | in the file — public | — | `true` | Password-gate the dashboard |
 | `apiKey` | `ZENITH_API_KEY` — **secret** | ✓ | — | Reads analytics, server-side only |
-| `passwordHash` | `ZENITH_PW_HASH` — **secret** | if protected | — | bcrypt hash from `pnpm exec zenith hash` |
+| `passwordHash` | `ZENITH_PW_HASH` — **secret** | if protected | — | bcrypt hash from `npx zenith hash` |
 | `jwtSecret` | `ZENITH_JWT_SECRET` — **secret** | if protected | — | Signs the dashboard cookie, 32+ chars |
 | `sessionTtl` | in the file — public | — | `43200` (12h) | Dashboard session length, in seconds |
 
@@ -355,8 +355,8 @@ visitor's page).
 ## CLI
 
 ```sh
-pnpm exec zenith init     # scaffold config/zenith.ts + the guarded dashboard route
-pnpm exec zenith hash     # generate a bcrypt hash for the dashboard password
+npx zenith init     # scaffold config/zenith.ts + the guarded dashboard route
+npx zenith hash     # generate a bcrypt hash for the dashboard password
 ```
 
 `init` detects App Router vs Pages Router and writes the right wiring for it, generates a
