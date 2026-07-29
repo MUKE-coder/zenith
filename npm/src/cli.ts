@@ -7,6 +7,7 @@ import process from 'node:process'
 
 import { hash } from 'bcryptjs'
 
+import { encodePasswordHash } from './config.js'
 import { generateSecret } from './session.js'
 
 /**
@@ -177,7 +178,17 @@ async function hashPassword(): Promise<void> {
 
     const digest = await hash(password, BCRYPT_COST)
 
-    console.log(`\nSet this in your deployment environment:\n\n  ZENITH_PW_HASH=${digest}\n`)
+    // Emit the base64url form, not the raw `$2b$10$…`. The raw hash is three
+    // `$` signs waiting to be eaten by shell, Docker Compose or dotenv
+    // interpolation; this form is plain letters, digits, `-` and `_`, so it
+    // pastes into any environment with no escaping. resolveConfig decodes it
+    // back, and still accepts a raw hash for anyone who already has one.
+    const encoded = encodePasswordHash(digest)
+
+    console.log(
+      `\nSet this in your deployment environment:\n\n  ZENITH_PW_HASH=${encoded}\n\n` +
+        `(Interpolation-safe — no \`$\` to escape. A raw $2b$… hash still works too.)\n`,
+    )
   } finally {
     rl.close()
   }

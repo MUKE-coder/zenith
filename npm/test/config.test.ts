@@ -102,3 +102,39 @@ test('errors say how to fix the problem', () => {
     assert.match((err as Error).message, /openssl rand/)
   }
 })
+
+// The base64url form npx zenith hash now prints must resolve to the same raw
+// bcrypt the comparison needs — that is the whole point of accepting it.
+test('accepts the base64url-encoded hash and decodes it back to raw bcrypt', () => {
+  const rawHash = '$2b$10$C/6dZOCT5XOYgCz1tTWbkODKBGTs5d0ElGOHCyhfNr1Oe2xL.uZcy'
+  const encoded = Buffer.from(rawHash, 'utf8').toString('base64url')
+
+  // No '$' survives the encoding — the whole reason it exists.
+  assert.doesNotMatch(encoded, /\$/)
+
+  const config = resolveConfig({ ...valid, passwordHash: encoded })
+  assert.equal(config.passwordHash, rawHash, 'the encoded hash was not decoded back to raw bcrypt')
+})
+
+// A raw hash already in someone's environment keeps working untouched.
+test('still accepts a raw bcrypt hash unchanged', () => {
+  const rawHash = '$2b$10$C/6dZOCT5XOYgCz1tTWbkODKBGTs5d0ElGOHCyhfNr1Oe2xL.uZcy'
+  const config = resolveConfig({ ...valid, passwordHash: rawHash })
+  assert.equal(config.passwordHash, rawHash)
+})
+
+// The base64url path must not become a way to smuggle a plaintext password
+// through: a plaintext does not round-trip into something bcrypt-shaped.
+test('a base64url-encoded plaintext is still rejected', () => {
+  const encodedPlaintext = Buffer.from('hunter2hunter2', 'utf8').toString('base64url')
+  assert.throws(() => resolveConfig({ ...valid, passwordHash: encodedPlaintext }), ConfigError)
+})
+
+// A hash whose $ signs were eaten by interpolation is neither raw bcrypt nor
+// valid base64url of one, so it is still caught — with the clear message.
+test('rejects a hash mangled by interpolation', () => {
+  assert.throws(
+    () => resolveConfig({ ...valid, passwordHash: '2b10C/6dZOCT5XOYgCz1tTWbkO' }),
+    ConfigError,
+  )
+})

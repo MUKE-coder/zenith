@@ -50,7 +50,7 @@ The three secrets come from the deployment environment and nowhere else:
 
 ```sh
 ZENITH_API_KEY=zk_...        # reads your analytics — from the console → Add site
-ZENITH_PW_HASH=$2b$10$...    # from `npx zenith hash`
+ZENITH_PW_HASH=...           # from `npx zenith hash` (interpolation-safe, no $)
 ZENITH_JWT_SECRET=...        # any long random string; `npx zenith init` prints one
 ```
 
@@ -217,7 +217,7 @@ which never reaches the browser.
 ### Setting the password
 
 ```sh
-npx zenith hash     # prompts, prints a bcrypt hash
+npx zenith hash     # prompts, prints a hash for ZENITH_PW_HASH
 ```
 
 Set the result as `ZENITH_PW_HASH` in your deployment environment. Never store a plaintext
@@ -225,6 +225,14 @@ password, and note that the hash is still a secret — it belongs in the environ
 `config/zenith.ts`. The password is verified against it **in your app** — the Zenith service
 never learns it. A correct password mints a signed, HttpOnly, first-party cookie lasting
 `sessionTtl` (12 hours by default).
+
+> [!NOTE]
+> The printed hash is **interpolation-safe**: since 0.4.4 `zenith hash` emits the bcrypt
+> hash base64url-encoded — plain letters, digits, `-` and `_`, with no `$`. A raw bcrypt
+> hash is `$2b$10$…`, and those `$` are what a shell, Docker Compose or a dotenv loader read
+> as variables to substitute, which quietly corrupts the value. The encoded form pastes into
+> any environment with no escaping; the config decodes it back. A raw `$2b$…` hash still
+> works, if you already have one — you just have to escape it for whatever reads it.
 
 To change it, run `npx zenith hash` again and replace the variable. To publish the dashboard
 with no gate at all, set `protected: false` in the config.

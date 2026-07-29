@@ -111,10 +111,14 @@ export function resolveConfig(input: Partial<ZenithConfig>): ZenithConfig {
           'Generate one with `npx zenith hash` , or set protected: false to publish the dashboard.',
       )
     }
+    // Accept the base64url form as well, and store whichever arrived as the
+    // raw bcrypt the comparison needs.
+    config.passwordHash = normalizePasswordHash(config.passwordHash)
     if (!looksLikeBcrypt(config.passwordHash)) {
       throw new ConfigError(
         'Zenith config: passwordHash is not a bcrypt hash. It must never be a plaintext ' +
-          'password. Generate one with `npx zenith hash`.',
+          'password. Generate one with `npx zenith hash` — its output pastes into any ' +
+          'environment without escaping.',
       )
     }
     if (!config.jwtSecret) {
@@ -164,4 +168,38 @@ function isHttpUrl(value: string): boolean {
 
 function looksLikeBcrypt(value: string): boolean {
   return /^\$2[aby]\$\d{2}\$/.test(value)
+}
+
+/**
+ * Returns the raw bcrypt hash, whether it arrived raw or base64url-encoded.
+ *
+ * A bcrypt hash is `$2b$10$…`, and every one of those `$` is exactly what a
+ * shell, Docker Compose or a dotenv loader reads as a variable to substitute.
+ * That makes the hash uniquely hostile to environment interpolation — it kept
+ * arriving with its `$` signs eaten and the config rightly refused it. So
+ * `npx zenith hash` now prints the same hash base64url-encoded: plain letters,
+ * digits, `-` and `_`, which none of those tools touch. This accepts either
+ * form, so a raw hash already in someone's environment keeps working untouched.
+ *
+ * Detection is unambiguous: a raw hash starts with `$2`, and the base64url
+ * alphabet has no `$`, so the two can never be confused. A value that is
+ * neither is returned unchanged for the validator to reject — a plaintext
+ * password does not survive a base64url round-trip into something bcrypt-shaped.
+ */
+export function normalizePasswordHash(value: string): string {
+  const raw = value.trim()
+  if (looksLikeBcrypt(raw)) return raw
+
+  try {
+    const decoded = Buffer.from(raw, 'base64url').toString('utf8')
+    if (looksLikeBcrypt(decoded)) return decoded
+  } catch {
+    // Not base64url; fall through and let the caller reject it.
+  }
+  return raw
+}
+
+/** Encodes a bcrypt hash into the `$`-free form `npx zenith hash` prints. */
+export function encodePasswordHash(bcryptHash: string): string {
+  return Buffer.from(bcryptHash, 'utf8').toString('base64url')
 }
