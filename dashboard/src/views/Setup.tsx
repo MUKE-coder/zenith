@@ -11,7 +11,7 @@ type Props = {
   onDeleted: () => void
 }
 
-/** What the npm package mounts the dashboard at unless told otherwise. */
+/** What the package mounts the dashboard at unless told otherwise. */
 const DEFAULT_DASHBOARD_PATH = '/analytics-dashboard'
 
 /**
@@ -59,10 +59,10 @@ function SiteSetup({ site, onDeleted }: { site: Site; onDeleted: () => void }) {
     `  defer\n` +
     `></script>`
 
-  const npmSteps =
-    `npm install zenith-analytics\n` +
-    `npx zenith init      # scaffolds config/zenith.ts + the dashboard route\n` +
-    `npx zenith hash      # a password for the client's dashboard`
+  const installSteps =
+    `pnpm add zenith-analytics\n` +
+    `pnpm exec zenith init      # scaffolds config/zenith.ts + the dashboard route\n` +
+    `pnpm exec zenith hash      # a password for the client's dashboard`
 
   const config =
     `import type { ZenithConfig } from "zenith-analytics"\n\n` +
@@ -123,13 +123,13 @@ function SiteSetup({ site, onDeleted }: { site: Site; onDeleted: () => void }) {
 
   return (
     <div className={styles.stack}>
-      <Panel title="Install with the npm package">
+      <Panel title="Install with the package">
         <div className={styles.step}>
           <p className={styles.stepLabel}>
             The recommended path for a Next.js site. It sets up tracking and the domain-native
             dashboard in one go.
           </p>
-          <CodeBlock code={npmSteps} />
+          <CodeBlock code={installSteps} />
 
           <p className={styles.stepLabel}>
             Then <code>config/zenith.ts</code>. This file holds no secrets, so it is safe to
@@ -258,7 +258,7 @@ function DeployPanel({ backend, path }: { backend: string; path: string }) {
     `ARG ZENITH_SITE_KEY\n` +
     `ENV ZENITH_URL=$ZENITH_URL\n` +
     `ENV ZENITH_SITE_KEY=$ZENITH_SITE_KEY\n\n` +
-    `RUN npm run build`
+    `RUN pnpm build`
 
   const compose =
     `services:\n` +
