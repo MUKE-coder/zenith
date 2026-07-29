@@ -411,3 +411,4 @@ test('the gate ships a hidden reveal button and a script to enable it', async ()
   assert.match(html, /reveal\.hidden = false/, 'no script to reveal the button')
   assert.match(html, /input\.type = show \? 'text' : 'password'/, 'no toggle logic')
 })
+

@@ -75,30 +75,48 @@ export function createHandler(input: Partial<ZenithConfig>): ZenithHandler {
   const config = resolveConfig(input)
 
   return async function handle(request: Request): Promise<Response> {
-    const url = new URL(request.url)
-    const sub = subPath(url.pathname, config.dashboardPath)
-
-    // The request did not come through the mounted route.
-    if (sub === null) return notFound()
-
-    if (sub === LOGOUT_PATH) return logout(config, request)
-
-    // The password gate posts back to the dashboard's own URL.
-    if (request.method === 'POST' && sub === '') return signIn(config, request)
-
-    if (!isAuthorized(config, request)) {
-      // An unauthenticated data request must not be answered with a login
-      // page: the caller is a fetch, and HTML would be nonsense to it.
-      if (sub.startsWith(API_PREFIX)) {
-        return json({ error: 'Your session has expired. Reload the page.' }, 401)
-      }
-      return gateResponse(config)
+    // Anything thrown in here would otherwise reach the framework as an
+    // unexplained 500 -- a blank "Internal Server Error" in the browser and
+    // nothing to go on. Catch it, log the real reason server-side where the
+    // operator can read it, and answer with a message that admits what failed
+    // without leaking a stack trace to the visitor.
+    try {
+      return await route(config, request)
+    } catch (err) {
+      console.error('[zenith] dashboard request failed:', err)
+      return new Response('Zenith dashboard error. Check the server logs.', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+      })
     }
-
-    if (sub.startsWith(API_PREFIX)) return forward(config, request, sub)
-
-    return dashboardShell(config)
   }
+}
+
+/** The request logic, wrapped by createHandler so a throw becomes a clean 500. */
+async function route(config: ZenithConfig, request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const sub = subPath(url.pathname, config.dashboardPath)
+
+  // The request did not come through the mounted route.
+  if (sub === null) return notFound()
+
+  if (sub === LOGOUT_PATH) return logout(config, request)
+
+  // The password gate posts back to the dashboard's own URL.
+  if (request.method === 'POST' && sub === '') return signIn(config, request)
+
+  if (!isAuthorized(config, request)) {
+    // An unauthenticated data request must not be answered with a login
+    // page: the caller is a fetch, and HTML would be nonsense to it.
+    if (sub.startsWith(API_PREFIX)) {
+      return json({ error: 'Your session has expired. Reload the page.' }, 401)
+    }
+    return gateResponse(config)
+  }
+
+  if (sub.startsWith(API_PREFIX)) return forward(config, request, sub)
+
+  return dashboardShell(config)
 }
 
 /**
